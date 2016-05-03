@@ -1,5 +1,6 @@
 #include "esp-missing-decls.h"
 
+#include <c_types.h>
 #include <osapi.h>
 
 #include <stddef.h>

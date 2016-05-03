@@ -8,6 +8,8 @@
 #include "httpd/httpd_init.h"
 #include "wifi.h"
 
+#include <c_types.h>
+
 void user_init() {
     wifi_init();
     httpd_init();

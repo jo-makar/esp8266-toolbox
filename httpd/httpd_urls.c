@@ -14,7 +14,7 @@
 
 void url_stations(struct espconn *conn, HttpClient *client);
 
-Url urls[] = {
+const Url urls[] = {
     { "/stations", url_stations },
     { "/",         url_stations },
     { "",          NULL },

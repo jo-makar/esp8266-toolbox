@@ -15,6 +15,6 @@ typedef struct {
     void (*handler)(struct espconn *, HttpClient *);
 } Url;
 
-extern Url urls[];
+extern const Url urls[];
 
 #endif
