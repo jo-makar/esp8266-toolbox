@@ -1,1 +1,8 @@
+app1.elf
+app2.elf
+user1.bin
+user2.bin
+*.o
+*.d
+
 \#*\#

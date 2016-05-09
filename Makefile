@@ -59,8 +59,11 @@ app1.elf app2.elf: $(obj)
 clean:
 	rm -f user1.bin user2.bin app1.elf app2.elf $(obj) $(dep)
 
-# This (over USB) flashes the bootloader, the first user app. section and resets the user and system param. sections.
-# Keep GPIO0 low during power on to put the ESP8266 in bootloader mode (typically by holding a button down on breakouts).
+# Flashing over USB requires that the ESP8266 be in bootloader mode, this can be done by holding GPIO0 low during boot
+
 flash: user1.bin
 	$(ESPTOOL) write_flash -fs 8m -ff 80m 0x00000 boot_v1.5.bin 0x01000 user1.bin \
 		0x7e000 blank.bin 0xfc000 esp_init_data_default.bin 0xfe000 blank.bin
+
+flash-user1: user1.bin
+	$(ESPTOOL) write_flash -fs 8m -ff 80m 0x01000 user1.bin
