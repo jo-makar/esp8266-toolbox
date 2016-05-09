@@ -54,7 +54,7 @@ void httpd_process(struct espconn *conn, HttpClient *client) {
 
         /* Loop through (and selectively copy) the header lines */
 
-        #define COPY_HEADER(name, dest) \
+        #define COPY_HEADER_STR(name, dest) \
             if (os_strncmp(key, name, MIN(os_strlen(name), keylen)) == 0) { \
                 if (vallen >= sizeof(client->dest)) { \
                     os_printf("httpd_process: insufficient " #dest " buffer length\n"); \
@@ -65,6 +65,23 @@ void httpd_process(struct espconn *conn, HttpClient *client) {
                 \
                 os_strncpy(client->dest, val, vallen); \
                 client->dest[vallen] = 0; \
+            }
+
+        #define COPY_HEADER_INT(name, dest) \
+            if (os_strncmp(key, name, MIN(os_strlen(name), keylen)) == 0) { \
+                char tmp[32]; \
+                \
+                if (vallen >= sizeof(tmp)) { \
+                    os_printf("httpd_process: insufficient tmp buffer length\n"); \
+                    if (espconn_disconnect(conn)) \
+                        os_printf("httpd_process: espconn_disconnect failed\n"); \
+                    return; \
+                } \
+                \
+                os_strncpy(tmp, val, vallen); \
+                tmp[vallen] = 0; \
+                \
+                client->dest = atoi(tmp); \
             }
 
         while (1) {
@@ -78,10 +95,9 @@ void httpd_process(struct espconn *conn, HttpClient *client) {
                 return;
             }
 
-            COPY_HEADER("Host", host)
+            COPY_HEADER_STR("Host", host)
+            COPY_HEADER_INT("Content-Length", postlen)
         }
-
-        #undef COPY_HEADER
 
         /* Consume the header from the client buffer */
         os_memmove(client->buf, buf, len);
@@ -89,7 +105,43 @@ void httpd_process(struct espconn *conn, HttpClient *client) {
 
         client->status = client->method == HTTPCLIENT_POST ?
                              HTTPCLIENT_RECV_POSTDATA : HTTPCLIENT_SEND_RESPONSE;
+    }
 
+    if (client->status == HTTPCLIENT_RECV_POSTDATA) {
+        if (client->postlen >= sizeof(client->post)) {
+            os_printf("httpd_process: insufficient post buffer length\n");
+            if (espconn_disconnect(conn))
+                os_printf("httpd_process: espconn_disconnect failed\n");
+            return;
+        }
+
+        /*
+         * Unclear whether this can occur, should accomodate the possibility however.
+         * Would require maintaining state to indicate amount of post data currently received.
+         */
+        if (client->postlen > client->bufused) {
+            os_printf("httpd_process: full post data not available\n");
+            if (espconn_disconnect(conn))
+                os_printf("httpd_process: espconn_disconnect failed\n");
+            return;
+        }
+
+        os_memcpy(client->post, client->buf, client->postlen);
+        client->post[client->postlen] = 0;
+
+        if (client->bufused > client->postlen) {
+            os_printf("httpd_process: extra bytes after post data\n");
+            if (espconn_disconnect(conn))
+                os_printf("httpd_process: espconn_disconnect failed\n");
+            return;
+        }
+
+        client->bufused = 0;
+
+        client->status = HTTPCLIENT_SEND_RESPONSE;
+    }
+
+    if (client->status == HTTPCLIENT_SEND_RESPONSE) {
         os_printf("httpd_process: %s %s %s from " IPSTR ":%u\n",
                   client->method == HTTPCLIENT_GET ? "GET" : "POST",
                   client->url, client->host,
@@ -105,7 +157,7 @@ void httpd_process(struct espconn *conn, HttpClient *client) {
 
             beg = client->url;
             if ((end = index(client->url, '?')) == NULL)
-                end = client->url + urllen;
+                end = client->url + os_strlen(client->url);
 
             if ((size_t)(end - beg) >= sizeof(baseurl)) {
                 os_printf("httpd_process: insufficient base url buffer length\n");

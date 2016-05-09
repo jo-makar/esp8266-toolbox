@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+int atoi(const char *nptr);
+
 char *index(const char *s, int c);
 
 size_t strnlen(const char *s, size_t maxlen);

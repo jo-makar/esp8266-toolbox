@@ -14,14 +14,18 @@ typedef struct {
     #define HTTPCLIENT_SEND_RESPONSE    2
     uint8_t status;
 
-    char buf[1024];
+    char buf[2*1024];
     size_t bufused;
 
     #define HTTPCLIENT_GET  0
     #define HTTPCLIENT_POST 1
     uint8_t method;
+
     char url[256];
     char host[128];
+
+    char post[1024+256];
+    uint16_t postlen;
 } HttpClient;
 
 #endif

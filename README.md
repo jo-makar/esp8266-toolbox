@@ -12,6 +12,8 @@ Motley of basic and portable servers and clients written for the ESP8266 ultimat
 * SMTP client
 * MQTT/RabbitMQ client
 * Host a filesystem off an SD card
+* Provide a user method to reset network settings
+ * Perhaps hold a GPIO low/high for X seconds?
 
 # Hardware
 Developing against the ESP-12-E, 1024 kbyte flash model (the 512 kbyte flash model will not work).

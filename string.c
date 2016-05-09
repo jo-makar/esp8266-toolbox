@@ -1,6 +1,28 @@
+#include "ctype.h"
 #include "esp-missing-decls.h"
 #include <osapi.h>
 #include <stddef.h>
+
+int atoi(const char *nptr) {
+    const char *p = nptr;
+    char neg = 0;
+    int rv = 0;
+
+    while (isspace(*p))
+        p++;
+
+    if (*p == '+')
+        p++;
+    else if (*p == '-') {
+        neg = 1;
+        p++;
+    }
+
+    for (; isdigit(*p); p++)
+        rv = rv*10 + (*p-'0');
+
+    return rv * (neg ? -1 : 1);
+}
 
 char *index(const char *s, int c) {
     const char *p;

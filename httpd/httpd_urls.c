@@ -61,9 +61,7 @@ void url_blank(struct espconn *conn, HttpClient *client) {
 
     /********************************************/
 
-    APPEND(bodybuf, bodylen, "<html><body>\n")
-
-    APPEND(bodybuf, bodylen, "</body></html>\n")
+    APPEND(bodybuf, bodylen, "<html><body></body></html>\n")
 
     /********************************************/
 
@@ -112,23 +110,45 @@ void url_wifi(struct espconn *conn, HttpClient *client) {
 
     /********************************************/
 
-    APPEND(bodybuf, bodylen, "<html><body>\n")
+    if (client->method == HTTPCLIENT_GET) {
+        APPEND(bodybuf, bodylen, "<html>\n")
+        APPEND(bodybuf, bodylen, "<head><style>.label { text-align: right; }</style></head>\n")
+        APPEND(bodybuf, bodylen, "<body><form action='/wifi' method='post'><table>\n")
+        APPEND(bodybuf, bodylen, "<tr><td class='label'>SSID</td><td><input type='text' name='ssid'/></td></tr>\n")
+        APPEND(bodybuf, bodylen, "<tr><td class='label'>Password</td><td><input type='text' name='pass'/></td></tr>\n")
+        APPEND(bodybuf, bodylen, "<tr><td/><td><input type='submit'/></td></tr>\n")
+        APPEND(bodybuf, bodylen, "</table></form></body></html>\n")
 
-    APPEND(bodybuf, bodylen, "<h1>WiFi</h1>\n")
+        /********************************************/
 
-    /* FIXME Create a form that posts back here, on post store setting (as done at end of func below) */
+        APPEND(headerbuf, headerlen, "HTTP/1.1 200 OK\r\n")
+        APPEND(headerbuf, headerlen, "Connection: close\r\n")
+        APPEND(headerbuf, headerlen, "Content-type: text/html\r\n")
 
-    APPEND(bodybuf, bodylen, "</body></html>\n")
+        APRINTF(headerbuf, headerlen, line, "Content-length: %u\r\n", BODY_MAXLEN - bodylen)
 
-    /********************************************/
+        APPEND(headerbuf, headerlen, "\r\n")
+    }
 
-    APPEND(headerbuf, headerlen, "HTTP/1.1 200 OK\r\n")
-    APPEND(headerbuf, headerlen, "Connection: close\r\n")
-    APPEND(headerbuf, headerlen, "Content-type: text/html\r\n")
+    else /* if (client->method == HTTPCLIENT_PUT) */ {
+        /* FIXME STOPPED parse client->post */
 
-    APRINTF(headerbuf, headerlen, line, "Content-length: %u\r\n", BODY_MAXLEN - bodylen)
+        APPEND(bodybuf, bodylen, "<html><body>\n")
 
-    APPEND(headerbuf, headerlen, "\r\n")
+        APRINTF(bodybuf, bodylen, line, "%s<br/>\n", client->post)
+
+        APPEND(bodybuf, bodylen, "</body></html>\n")
+    
+        /********************************************/
+
+        APPEND(headerbuf, headerlen, "HTTP/1.1 200 OK\r\n")
+        APPEND(headerbuf, headerlen, "Connection: close\r\n")
+        APPEND(headerbuf, headerlen, "Content-type: text/html\r\n")
+
+        APRINTF(headerbuf, headerlen, line, "Content-length: %u\r\n", BODY_MAXLEN - bodylen)
+
+        APPEND(headerbuf, headerlen, "\r\n")
+    }
 
     /********************************************/
 
@@ -146,6 +166,7 @@ void url_wifi(struct espconn *conn, HttpClient *client) {
     if (espconn_disconnect(conn))
         os_printf("url_wifi: espconn_disconnect failed\n");
 
+    /* FIXME Remove
     {
         struct station_config config;
 
@@ -174,4 +195,5 @@ void url_wifi(struct espconn *conn, HttpClient *client) {
             return;
         }
     }
+    */
 }
