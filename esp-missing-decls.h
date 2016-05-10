@@ -2,6 +2,7 @@
 #define ESP_MISSING_DECLS_H
 
 #include <stddef.h>
+#include <user_interface.h>
 
 /* Gleaned from various sources (eg https://github.com/mziwisky/esp8266-dev/blob/master/esphttpd/include/espmissingincludes.h) */
 
@@ -11,6 +12,10 @@ int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 
 int os_sprintf(char *str, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
 
 void uart_div_modify(int no, unsigned int freq);
+
+void ets_timer_arm_new(os_timer_t *ptimer, uint32_t milliseconds, bool repeat_flag, int isMstimer);
+void ets_timer_disarm(os_timer_t *ptimer);
+void ets_timer_setfn(os_timer_t *ptimer, os_timer_func_t *pfunction, void *parg);
 
 void   ets_bzero(void *s, size_t n);
 int    ets_memcmp(const void *s1, const void *s2, size_t n);

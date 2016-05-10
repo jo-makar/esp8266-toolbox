@@ -90,6 +90,36 @@ void url_blank(struct espconn *conn, HttpClient *client) {
         os_printf("url_blank: espconn_disconnect failed\n");
 }
 
+struct station_config url_wifi_config;
+
+volatile os_timer_t url_wifi_configtimer;
+
+void url_wifi_configfunc(void *arg) {
+    (void)arg;
+
+    os_printf("url_wifi_configfunc\n");
+
+    if (!wifi_set_opmode(STATION_MODE)) {
+        os_printf("url_wifi_configfunc: wifi_set_opmode failed\n");
+        return;
+    }
+
+    if (!wifi_station_set_config(&url_wifi_config)) {
+        os_printf("url_wifi_configfunc: wifi_station_set_config failed\n");
+        return;
+    }
+
+    if (!wifi_station_disconnect()) {
+        os_printf("url_wifi_configfunc: wifi_station_disconnect failed\n");
+        return;
+    }
+
+    if (!wifi_station_connect()) {
+        os_printf("url_wifi_configfunc: wifi_station_connect failed\n");
+        return;
+    }
+}
+
 void url_wifi(struct espconn *conn, HttpClient *client) {
     (void)client;
 
@@ -131,12 +161,68 @@ void url_wifi(struct espconn *conn, HttpClient *client) {
     }
 
     else /* if (client->method == HTTPCLIENT_PUT) */ {
-        /* FIXME STOPPED parse client->post */
+        const char *postbuf = client->post;
+        size_t      postlen = client->postlen;
+
+        const char *key, *val;
+        size_t keylen, vallen;
+        int rv;
+
+        char ssid[sizeof(url_wifi_config.ssid) + 1];
+        char pass[sizeof(url_wifi_config.password) + 1];
+
+        os_bzero(ssid, sizeof(ssid));
+        os_bzero(pass, sizeof(pass));
+
+        while (1) {
+            if ((rv = querystring(&postbuf, &postlen, &key, &keylen, &val, &vallen)) == 1) {
+                if (espconn_disconnect(conn))
+                    os_printf("url_wifi: espconn_disconnect failed\n");
+                return;
+            } else if (rv == 2)
+                break;
+
+            if (os_strncmp(key, "ssid", 4) == 0) {
+                if (vallen > sizeof(url_wifi_config.ssid)) {
+                    os_printf("url_wifi: ssid exceeds max SDK length\n");
+                    if (espconn_disconnect(conn))
+                        os_printf("url_wifi: espconn_disconnect failed\n");
+                    return;
+                }
+
+                os_strncpy(ssid, val, vallen);
+                ssid[vallen] = 0;
+            }
+
+            else if (os_strncmp(key, "pass", 4) == 0) {
+                if (vallen > sizeof(url_wifi_config.password)) {
+                    os_printf("url_wifi: password exceeds max SDK length\n");
+                    if (espconn_disconnect(conn))
+                        os_printf("url_wifi: espconn_disconnect failed\n");
+                    return;
+                }
+
+                os_strncpy(pass, val, vallen);
+                pass[vallen] = 0;
+            }
+        }
+
+        if (!os_strlen(ssid)) {
+            os_printf("url_wifi: missing ssid parameter\n");
+            if (espconn_disconnect(conn))
+                os_printf("url_wifi: espconn_disconnect failed\n");
+            return;
+        }
+
+        if (!os_strlen(pass)) {
+            os_printf("url_wifi: missing pass parameter\n");
+            if (espconn_disconnect(conn))
+                os_printf("url_wifi: espconn_disconnect failed\n");
+            return;
+        }
 
         APPEND(bodybuf, bodylen, "<html><body>\n")
-
-        APRINTF(bodybuf, bodylen, line, "%s<br/>\n", client->post)
-
+        APRINTF(bodybuf, bodylen, line, "Changing to station mode with ssid = %s, pass = %s<br/>\n", ssid, pass)
         APPEND(bodybuf, bodylen, "</body></html>\n")
     
         /********************************************/
@@ -148,6 +234,20 @@ void url_wifi(struct espconn *conn, HttpClient *client) {
         APRINTF(headerbuf, headerlen, line, "Content-length: %u\r\n", BODY_MAXLEN - bodylen)
 
         APPEND(headerbuf, headerlen, "\r\n")
+
+        /*
+         * Use a non-repeating timer to call a function to effect the network change later,
+         * since changing now breaks the HTTP connection (even after the epsconn_disconnect).
+         */
+
+        os_bzero(&url_wifi_config, sizeof(url_wifi_config));
+        os_strncpy((char *)url_wifi_config.ssid,     ssid, sizeof(url_wifi_config.ssid));
+        os_strncpy((char *)url_wifi_config.password, pass, sizeof(url_wifi_config.password));
+        url_wifi_config.bssid_set = 0;
+
+        os_timer_disarm((os_timer_t *)&url_wifi_configtimer);
+         os_timer_setfn((os_timer_t *)&url_wifi_configtimer, url_wifi_configfunc, NULL);
+           os_timer_arm((os_timer_t *)&url_wifi_configtimer, 5000, 0);
     }
 
     /********************************************/
@@ -165,35 +265,4 @@ void url_wifi(struct espconn *conn, HttpClient *client) {
 
     if (espconn_disconnect(conn))
         os_printf("url_wifi: espconn_disconnect failed\n");
-
-    /* FIXME Remove
-    {
-        struct station_config config;
-
-        if (!wifi_set_opmode(STATION_MODE)) {
-            os_printf("url_wifi: wifi_set_opmode failed\n");
-            return;
-        }
-
-        os_bzero(&config, sizeof(config));
-        os_strncpy((char *)config.ssid,     "ssid", sizeof(config.ssid));
-        os_strncpy((char *)config.password, "pass", sizeof(config.password));
-        config.bssid_set = 0;
-
-        if (!wifi_station_set_config(&config)) {
-            os_printf("url_wifi: wifi_station_set_config failed\n");
-            return;
-        }
-
-        if (!wifi_station_disconnect()) {
-            os_printf("url_wifi: wifi_station_disconnect failed\n");
-            return;
-        }
-
-        if (!wifi_station_connect()) {
-            os_printf("url_wifi: wifi_station_connect failed\n");
-            return;
-        }
-    }
-    */
 }

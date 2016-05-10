@@ -3,6 +3,7 @@ Motley of basic and portable servers and clients written for the ESP8266 ultimat
 
 # Complete
 * HTTP server
+ * POST requests
 
 # TODO
 * Implement OTA flashing via HTTP POST

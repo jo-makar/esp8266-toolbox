@@ -25,7 +25,7 @@ typedef struct {
     char host[128];
 
     char post[1024+256];
-    uint16_t postlen;
+    size_t postlen;
 } HttpClient;
 
 #endif

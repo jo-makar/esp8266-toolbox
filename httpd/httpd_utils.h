@@ -24,4 +24,7 @@ int append(char **dest, size_t *destlen, const char *src);
         APPEND(destbuf, destlen, line) \
     }
 
+int querystring(const char **buf, size_t *len, const char **key, size_t *keylen,
+                                               const char **val, size_t *vallen);
+
 #endif

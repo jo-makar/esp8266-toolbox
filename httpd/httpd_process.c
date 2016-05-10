@@ -89,7 +89,7 @@ void httpd_process(struct espconn *conn, HttpClient *client) {
                 return;
             else if (rv == 2) /* End of headers */
                 break;
-            else if (rv == 3) { /* Invalid header lined */
+            else if (rv == 3) { /* Invalid header line */
                 if (espconn_disconnect(conn))
                     os_printf("httpd_process: espconn_disconnect failed\n");
                 return;
