@@ -1,0 +1,198 @@
+#!/usr/bin/env python
+
+from   datetime import datetime
+import socket
+from   time     import sleep
+
+def connect_packet():
+    # To be generated from the 32-bit system_get_chip_id()
+    clientid = 'esp8266_000ef1e8'
+    assert 0 < len(clientid) and len(clientid) <= 23
+
+    remlen = 10 + 2+len(clientid)
+    assert remlen < 256
+
+    #
+    # Fixed header
+    #
+
+    packet = '\x10' + chr(remlen)
+
+    #
+    # Variable header
+    #
+
+    packet += '\x00\x04' + 'MQTT'
+
+    # MQTT 3.1.1
+    packet += '\x04'
+
+    #  Clean Session = 1
+    #      Will Flag = 0
+    #       Will QoS = 0
+    #    Will Retain = 0
+    #  Password Flag = 0
+    # User Name Flag = 0
+    packet += '\x02'
+
+    keepalive = 60
+    assert -1 < keepalive and keepalive < 2**16
+    packet += chr((keepalive>>8) & 0x0ff) + chr(keepalive & 0x0ff)
+
+    #
+    # Payload
+    #
+
+    packet += chr((len(clientid)>>8) & 0x0ff) + chr(len(clientid) & 0x0ff)
+    packet += clientid
+
+    assert len(packet) == 2 + 10 + 2+len(clientid)
+
+    return packet
+
+def connectack_packet(packet):
+    contents = {}
+
+    #
+    # Fixed header
+    #
+
+    contents['control packet type'] = (ord(packet[0]) >> 4) & 0x0f
+    contents['remaining length']    = ord(packet[1])
+
+    #
+    # Variable header
+    #
+
+    contents['session present']     = ord(packet[2]) & 0x01
+    contents['connect return code'] = ord(packet[3])
+
+    assert contents['control packet type'] == 2
+    assert    contents['remaining length'] == 2
+    assert     contents['session present'] == 0
+
+    # 0 - Connection Accepted
+    # 1 - Connection Refused, Unacceptable protocol version
+    # 2 - Connection Refused, Identifier rejected
+    # 3 - Connection Refused, Server unavailable
+    # 4 - Connection Refused, Bad user name or password
+    # 5 - Connection Refused, Not authorized
+
+    return contents['connect return code']
+
+def pingreq_packet():
+    #
+    # Fixed header
+    #
+
+    packet = '\xc0\x00'
+
+    return packet
+
+def pingresp_packet(packet):
+    contents = {}
+
+    #
+    # Fixed header
+    #
+
+    contents['control packet type'] = (ord(packet[0]) >> 4) & 0x0f
+    contents['remaining length']    = ord(packet[1])
+
+    assert contents == {'control packet type': 0xd,
+                           'remaining length': 0}
+
+def publish_packet(data):
+    topic = 'test'
+    assert 0 < len(topic)
+
+    remlen = 2+len(topic) + 2+len(data)
+    assert remlen < 256
+
+    #
+    # Fixed header
+    #
+
+    #  DUP flag = 0
+    # QoS level = 0
+    #    RETAIN = 0
+    packet = '\x30'
+
+    packet += chr(remlen)
+
+    #
+    # Variable header
+    #
+
+    packet += chr((len(topic)>>8) & 0x0ff) + chr(len(topic) & 0x0ff)
+    packet += topic
+
+    # Packet identifier only for QoS levels 1 and 2
+
+    #
+    # Payload
+    #
+
+    packet += chr((len(data)>>8) & 0x0ff) + chr(len(data) & 0x0ff)
+    packet += data
+
+    return packet
+
+if __name__ == '__main__':
+    def send(sock, data):
+        sent = 0
+        while sent < len(data):
+            n = sock.send(data[sent:])
+            assert n > 0
+            sent += n
+    
+    def recv(sock, n):
+        retval = ''
+        recvd  = 0
+        while recvd < n:
+            data = sock.recv(min(n - recvd, 1024))
+            assert len(data) > 0
+            retval += data
+            recvd  += len(data)
+        return retval
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(('127.0.0.1', 1883))
+
+    #
+    # Connect
+    #
+
+    send(sock, connect_packet())
+    packet  = recv(sock, 2)
+    packet += recv(sock, ord(packet[1]))
+    print '>>> CONNECT'
+
+    assert connectack_packet(packet) == 0
+    print '<<< CONNECTACK'
+
+    while True:
+        #
+        # Publish
+        #
+
+        payload = 'python ' + datetime.now().strftime('%Y%m%d%H%M%S')
+        send(sock, publish_packet(payload))
+        print '>>> PUBLISH'
+        # No response for QoS level 0
+
+        #
+        # Ping
+        #
+        # Only necessary if the publish period is shorter than the keepalive
+        #
+
+        #send(sock, pingreq_packet())
+        #packet  = recv(sock, 2)
+        #packet += recv(sock, ord(packet[1]))
+        #print '>>> PINGREQ'
+
+        #pingresp_packet(packet)
+        #print '>>> PINGRESP'
+
+        sleep(10)

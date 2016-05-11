@@ -4,6 +4,7 @@ Motley of basic and portable servers and clients written for the ESP8266 ultimat
 # Complete
 * HTTP server
  * POST requests
+ * HTTP-based network config
 
 # TODO
 * Implement OTA flashing via HTTP POST
@@ -11,7 +12,7 @@ Motley of basic and portable servers and clients written for the ESP8266 ultimat
 * Verify HTTP server implementation follows the RFCs
  * Is there a testing procedure that can be followed to do this?
 * SMTP client
-* MQTT/RabbitMQ client
+* MQTT client v3.1.1
 * Host a filesystem off an SD card
 * Provide a user method to reset network settings
  * Perhaps hold a GPIO low/high for X seconds?
@@ -44,3 +45,5 @@ The preceding clause must be included in all derivative software developed with 
 The author takes no responsibility for the consequences of the use of this software.
 
 Use of the software in any form indicates acknowledgement of the licensing terms.
+
+Copyright (c) 2016 J. O. Makar <jomakar@gmail.com>

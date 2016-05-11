@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+
+import paho.mqtt.client as mqtt
+# pydoc .../paho/mqtt/{client,publish}.py
+
+from datetime import datetime
+from time     import sleep
+
+if __name__ == '__main__':
+    def on_connect(client, userdata, flags, rc):
+        print '   connect: %s, flags = %s' % (mqtt.connack_string(rc), flags)
+
+    def on_disconnect(client, userdata, rc):
+        if rc == mqtt.MQTT_ERR_SUCCESS:
+            print 'disconnect: client.disconnect()'
+        else:
+            print 'disconnect: %s' % mqtt.error_string(rc)
+
+    def on_log(client, userdata, level, buf):
+        LEVEL = {   mqtt.MQTT_LOG_INFO:'info',
+                  mqtt.MQTT_LOG_NOTICE:'notice',
+                 mqtt.MQTT_LOG_WARNING:'warning',
+                     mqtt.MQTT_LOG_ERR:'error',
+                   mqtt.MQTT_LOG_DEBUG:'debug' }
+
+        print '       log: %s: %s' % (LEVEL[level], buf)
+
+    def on_publish(client, userdata, mid):
+        print '   publish: mid = %s' % mid
+
+    client = mqtt.Client()
+    client.on_connect    = on_connect
+    client.on_disconnect = on_disconnect
+    client.on_log        = on_log
+    client.on_publish    = on_publish
+
+    client.connect('127.0.0.1')
+
+    while True:
+        payload  = 'paho-mqtt ' + datetime.now().strftime('%Y%m%d%H%M%S')
+        logentry = ' main-loop: '
+        rv, mid  = client.publish('test', payload)
+        if rv == mqtt.MQTT_ERR_NO_CONN:
+            logentry += 'Client not connected'
+        else:
+            logentry += 'mid = %s, payload = %s' % (mid, payload)
+        print logentry
+
+        client.loop()
+        sleep(10)
