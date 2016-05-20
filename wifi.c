@@ -1,4 +1,5 @@
 #include "esp-missing-decls.h"
+#include "mqtt/mqtt_init.h"
 #include "string.h"
 
 #include <osapi.h>
@@ -191,6 +192,9 @@ ICACHE_FLASH_ATTR void wifi_event_handler(System_Event_t *evt) {
                       IP2STR(&evt->event_info.got_ip.ip),
                       IP2STR(&evt->event_info.got_ip.mask),
                       IP2STR(&evt->event_info.got_ip.gw));
+
+            mqtt_connect();
+
             break;
 
         case EVENT_STAMODE_DHCP_TIMEOUT:

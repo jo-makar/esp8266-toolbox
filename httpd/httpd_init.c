@@ -75,10 +75,15 @@ void httpd_connect_cb(void *arg) {
     os_memcpy(clients[i].ip, conn->proto.tcp->remote_ip, 4);
     clients[i].port = conn->proto.tcp->remote_port;
 
-    if (espconn_regist_disconcb(conn, httpd_disconnect_cb))
+    if (espconn_regist_disconcb(conn, httpd_disconnect_cb)) {
         os_printf("httpd_connect_cb: espconn_regist_disconcb failed\n");
-    if (espconn_regist_recvcb(conn, httpd_recv_cb))
+        goto drop;
+    }
+
+    if (espconn_regist_recvcb(conn, httpd_recv_cb)) {
         os_printf("httpd_connect_cb: espconn_regist_recvcb failed\n");
+        goto drop;
+    }
 
     /* Not using espconn_regist_sentcb because it does not report the amount of data sent */
 
@@ -118,27 +123,27 @@ void httpd_error_cb(void *arg, int8_t err) {
 
     os_printf("httpd_error_cb: error %d ", err);
     switch (err) {
-        case ESPCONN_OK:            os_printf("ok ");                           break;
-        case ESPCONN_MEM:           os_printf("out of memory ");                break;
-        case ESPCONN_TIMEOUT:       os_printf("timeout ");                      break;
-        case ESPCONN_RTE:           os_printf("routing ");                      break;
-        case ESPCONN_INPROGRESS:    os_printf("in progress ");                  break;
-        case ESPCONN_MAXNUM:        os_printf("max number ");                   break;
-        case ESPCONN_ABRT:          os_printf("connection aborted ");           break;
+        case ESPCONN_OK:             os_printf("ok ");                           break;
+        case ESPCONN_MEM:            os_printf("out of memory ");                break;
+        case ESPCONN_TIMEOUT:        os_printf("timeout ");                      break;
+        case ESPCONN_RTE:            os_printf("routing ");                      break;
+        case ESPCONN_INPROGRESS:     os_printf("in progress ");                  break;
+        case ESPCONN_MAXNUM:         os_printf("max number ");                   break;
+        case ESPCONN_ABRT:           os_printf("connection aborted ");           break;
 
-        case ESPCONN_RST:           os_printf("connection reset ");             break;
-        case ESPCONN_CLSD:          os_printf("connection closed ");            break;
-        case ESPCONN_CONN:          os_printf("not connected ");                break;
+        case ESPCONN_RST:            os_printf("connection reset ");             break;
+        case ESPCONN_CLSD:           os_printf("connection closed ");            break;
+        case ESPCONN_CONN:           os_printf("not connected ");                break;
 
-        case ESPCONN_ARG:           os_printf("illegal argument ");             break;
-        case ESPCONN_IF:            os_printf("low-level error ");              break;
-        case ESPCONN_ISCONN:        os_printf("already connected ");            break;
+        case ESPCONN_ARG:            os_printf("illegal argument ");             break;
+        case ESPCONN_IF:             os_printf("low-level error ");              break;
+        case ESPCONN_ISCONN:         os_printf("already connected ");            break;
 
-        case ESPCONN_HANDSHAKE:     os_printf("SSL handshake failed ");         break;
-        /* case ESPCONN_RESP_TIMEOUT:  os_printf("SSL handshake no response ");    break; */
-        /* case ESPCONN_PROTO_MSG:     os_printf("SSL application invalid ");      break; */
+        case ESPCONN_HANDSHAKE:      os_printf("SSL handshake failed ");         break;
+        /*case ESPCONN_RESP_TIMEOUT: os_printf("SSL handshake no response ");    break;*/
+        /*case ESPCONN_PROTO_MSG:    os_printf("SSL application invalid ");      break;*/
 
-        default:                    os_printf("unknown ");                      break;
+        default:                     os_printf("unknown ");                      break;
     }
     os_printf("from " IPSTR ":%u\n", IP2STR(conn->proto.tcp->remote_ip), conn->proto.tcp->remote_port);
 
@@ -169,7 +174,7 @@ void httpd_recv_cb(void *arg, char *data, unsigned short len) {
     }
 
     if ((size_t)(clients[i].bufused + len) > sizeof(clients[i].buf)) {
-        os_printf("httpd_recv_cb: insufficient buffer space; available=%u, required=%u\n",
+        os_printf("httpd_recv_cb: insufficient buffer length; available=%u, required=%u\n",
                   sizeof(clients[i].buf) - clients[i].bufused, len);
         if (espconn_disconnect(conn))
             os_printf("httpd_recv_cb: espconn_disconnect failed\n");

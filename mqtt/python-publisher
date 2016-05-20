@@ -5,11 +5,17 @@ import socket
 from   time     import sleep
 
 def connect_packet():
+    #user, passwd = 'guest', 'guest'
+    user, passwd = None, None
+    useauth = user is not None and passwd is not None
+
     # To be generated from the 32-bit system_get_chip_id()
     clientid = 'esp8266_000ef1e8'
     assert 0 < len(clientid) and len(clientid) <= 23
 
     remlen = 10 + 2+len(clientid)
+    if useauth:
+        remlen += 2+len(user) + 2+len(passwd)
     assert remlen < 256
 
     #
@@ -31,9 +37,12 @@ def connect_packet():
     #      Will Flag = 0
     #       Will QoS = 0
     #    Will Retain = 0
-    #  Password Flag = 0
-    # User Name Flag = 0
-    packet += '\x02'
+    #  Password Flag = ?
+    # User Name Flag = ?
+    b = 0x02
+    if useauth:
+        b |= 0xc0
+    packet += chr(b)
 
     keepalive = 60
     assert -1 < keepalive and keepalive < 2**16
@@ -46,7 +55,15 @@ def connect_packet():
     packet += chr((len(clientid)>>8) & 0x0ff) + chr(len(clientid) & 0x0ff)
     packet += clientid
 
-    assert len(packet) == 2 + 10 + 2+len(clientid)
+    if useauth:
+        packet += chr((len(user)>>8) & 0x0ff) + chr(len(user) & 0x0ff)
+        packet += user
+
+        packet += chr((len(passwd)>>8) & 0x0ff) + chr(len(passwd) & 0x0ff)
+        packet += passwd
+
+    assert len(packet) == 2 + 10 + 2+len(clientid) + \
+               (2+len(user) + 2+len(passwd) if useauth else 0)
 
     return packet
 
@@ -193,6 +210,6 @@ if __name__ == '__main__':
         #print '>>> PINGREQ'
 
         #pingresp_packet(packet)
-        #print '>>> PINGRESP'
+        #print '<<< PINGRESP'
 
         sleep(10)

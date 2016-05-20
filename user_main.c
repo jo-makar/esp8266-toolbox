@@ -6,11 +6,19 @@
  */
 
 #include "httpd/httpd_init.h"
+#include "mqtt/mqtt_init.h"
 #include "wifi.h"
 
 #include <c_types.h>
 
 void user_init() {
-    wifi_init();
+    /*
+     * Servers initialize and begin accepting here, clients initialize here and connect
+     * on wifi station connect events (which provides a link to the outer network).
+     */
+
     httpd_init();
+    mqtt_init();
+
+    wifi_init();
 }

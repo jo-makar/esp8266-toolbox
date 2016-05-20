@@ -37,6 +37,10 @@ The esp8266-serial (pyserial dependency) is a small utility to view the debuggin
 note that cannot use a standard utility like minicom because the ESP8266 bootloader uses a baud of 74880
 (which is being maintained with the application debugging output for consistency).
 
+# RabbitMQ MQTT plugin
+For remote access with the RabbitMQ MQTT plugin, the default (ie when not provided) user/pass will result in refused connections with a "not authorized" error code, because the default user can only connect via localhost (refer to http://www.rabbitmq.com/access-control.html).
+
+One workaround is to create a user (rabbitmqctl add_user <user> <pass>) and modify mqtt/mqtt_init.h appropriately.  Another is to modify the RabbitMQ config to allow access from the default user from anywhere on the network via the parameter loopback_users.
 
 # License
 This software is freely available for non-commerical use, commerical use requires an expressed agreement from the author.

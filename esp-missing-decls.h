@@ -7,6 +7,7 @@
 /* Gleaned from various sources (eg https://github.com/mziwisky/esp8266-dev/blob/master/esphttpd/include/espmissingincludes.h) */
 
 #define os_snprintf ets_snprintf
+#define os_sprintf  ets_sprintf
 
 int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
 int os_sprintf(char *str, const char *format, ...) __attribute__ ((format (printf, 2, 3)));

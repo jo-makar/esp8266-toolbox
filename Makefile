@@ -3,7 +3,7 @@ SDK_BASEPATH       = $(TOOLCHAIN_BASEPATH)/xtensa-lx106-elf/sysroot/usr
 
 ########################################
 
-src = $(wildcard *.c) $(wildcard httpd/*.c)
+src = $(wildcard *.c) $(wildcard httpd/*.c) $(wildcard mqtt/*.c)
 obj = $(src:.c=.o)
 dep = $(src:.c=.d)
 
