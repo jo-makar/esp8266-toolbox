@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 
+#define MQTT_PKT_INVALID  1
+#define MQTT_PKT_OVERFLOW 2
+
 ICACHE_FLASH_ATTR int mqtt_pkt_connect(uint8_t *buf, uint16_t len, uint16_t *used) {
     /*
      * NB The following does not handle passwords with embedded null bytes,
@@ -30,8 +33,8 @@ ICACHE_FLASH_ATTR int mqtt_pkt_connect(uint8_t *buf, uint16_t len, uint16_t *use
         remlen += 2 + os_strlen(MQTT_USER) + 2 + os_strlen(MQTT_PASS);
     #endif
 
-    if (remlen > 255)          return 1;
-    else if (2 + remlen > len) return 2;
+    if (remlen > 255)          return MQTT_PKT_INVALID;
+    else if (2 + remlen > len) return MQTT_PKT_OVERFLOW;
 
     /*
      * Fixed header
@@ -123,4 +126,44 @@ ICACHE_FLASH_ATTR int mqtt_pkt_connectack(uint8_t *buf, uint8_t len) {
         return -1;
 
     return connect;
+}
+
+ICACHE_FLASH_ATTR int mqtt_pkt_pingreq(uint8_t *buf, uint16_t len, uint16_t *used) {
+    uint8_t *pkt = buf;
+
+    if (len < 2)
+        return MQTT_PKT_OVERFLOW;
+
+    /*
+     * Fixed header
+     */
+
+    pkt += os_sprintf((char *)pkt, "\xc0%c", 0);
+
+    *used = 2;
+    return 0;
+}
+
+ICACHE_FLASH_ATTR int mqtt_pkt_pingresp(uint8_t *buf, uint8_t len) {
+    uint8_t *pkt = buf;
+
+    uint8_t type;       /* Control packet type */
+    uint8_t remlen;     /* Remaining length */
+
+    if (len < 2)
+        return -1;
+
+    /*
+     * Fixed header
+     */
+
+    type   = (*(pkt++) >> 4) & 0x0f;
+    remlen =  *(pkt++);
+
+    if (type != 0xd)
+        return -1;
+    if (remlen != 0)
+        return -1;
+
+    return 0;
 }

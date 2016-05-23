@@ -10,7 +10,8 @@ def connect_packet():
     useauth = user is not None and passwd is not None
 
     # To be generated from the 32-bit system_get_chip_id()
-    clientid = 'esp8266_000ef1e8'
+    # NB client ids must be unique, the RabbitMQ MQTT impl. will drop the (old) duplicate
+    clientid = 'python-esp8266_000ef1e8'
     assert 0 < len(clientid) and len(clientid) <= 23
 
     remlen = 10 + 2+len(clientid)

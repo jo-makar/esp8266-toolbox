@@ -2,6 +2,7 @@
 #include "mqtt_init.h"
 #include "mqtt_packets.h"
 #include "mqtt_process.h"
+#include "mqtt_user.h"
 
 /* Must be included before espconn.h */
 #include <ip_addr.h>
@@ -21,34 +22,42 @@ void mqtt_disconnect_cb(void *arg);
 void      mqtt_error_cb(void *arg, int8_t err);
 void       mqtt_recv_cb(void *arg, char *data, unsigned short len);
 
+volatile os_timer_t mqtt_user_timer;
+
 ICACHE_FLASH_ATTR void mqtt_init() {
     /* Implicitly sets attributes in mqttstate to zero (eg connected, ..) */
     os_bzero(&mqttstate, sizeof(mqttstate));
 
-    mqttconn.type  = ESPCONN_TCP;
-    mqttconn.state = ESPCONN_NONE;
+    {
+        mqttconn.type  = ESPCONN_TCP;
+        mqttconn.state = ESPCONN_NONE;
 
-    os_memcpy(mqtttcp.remote_ip, MQTT_HOST, sizeof(mqtttcp.remote_ip));
-    mqtttcp.remote_port = 1883;
-    /* mqtttcp.local_{port,ip} can be left unset */
+        os_memcpy(mqtttcp.remote_ip, MQTT_HOST, sizeof(mqtttcp.remote_ip));
+        mqtttcp.remote_port = 1883;
+        /* mqtttcp.local_{port,ip} can be left unset */
 
-    mqttconn.proto.tcp = &mqtttcp;
+        mqttconn.proto.tcp = &mqtttcp;
 
-    if (espconn_regist_connectcb(&mqttconn, mqtt_connect_cb)) {
-        os_printf("mqtt_init: espconn_regist_connectcb failed\n");
-        return;
+        if (espconn_regist_connectcb(&mqttconn, mqtt_connect_cb)) {
+            os_printf("mqtt_init: espconn_regist_connectcb failed\n");
+            return;
+        }
+        if (espconn_regist_reconcb(&mqttconn, mqtt_error_cb)) {
+            os_printf("mqtt_init: espconn_regist_reconcb failed\n");
+            return;
+        }
     }
-    if (espconn_regist_reconcb(&mqttconn, mqtt_error_cb)) {
-        os_printf("mqtt_init: espconn_regist_reconcb failed\n");
-        return;
-    }
+
+    os_timer_disarm((os_timer_t *)&mqtt_user_timer);
+     os_timer_setfn((os_timer_t *)&mqtt_user_timer, mqtt_user, NULL);
+       os_timer_arm((os_timer_t *)&mqtt_user_timer, (MQTT_KEEPALIVE * 1000) / 3, 1);
 }
 
 ICACHE_FLASH_ATTR void mqtt_connect() {
-    if (espconn_connect(&mqttconn)) {
-        os_printf("mqtt_init: espconn_connect failed\n");
-        return;
-    }
+    mqttstate.prevactivity = system_get_time();
+
+    if (espconn_connect(&mqttconn))
+        os_printf("mqtt_connect: espconn_connect failed\n");
 }
 
 ICACHE_FLASH_ATTR void mqtt_connect_cb(void *arg) {
@@ -104,8 +113,8 @@ ICACHE_FLASH_ATTR void mqtt_disconnect_cb(void *arg) {
     os_printf("mqtt_disconnect_cb: disconnect from " IPSTR ":%u\n",
               IP2STR(conn->proto.tcp->remote_ip), conn->proto.tcp->remote_port);
 
-    /* Implicitly sets attributes in mqttstate to zero (eg connected, ..) */
-    os_bzero(&mqttstate, sizeof(mqttstate));
+    mqttstate.connected = 0;
+    mqttstate.bufused   = 0;
 }
 
 ICACHE_FLASH_ATTR void mqtt_error_cb(void *arg, int8_t err) {

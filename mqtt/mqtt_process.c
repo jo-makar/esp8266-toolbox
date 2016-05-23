@@ -9,6 +9,8 @@
 #include <osapi.h>
 
 ICACHE_FLASH_ATTR void mqtt_process(struct espconn *conn) {
+    (void)conn;
+
     uint8_t type;       /* Control packet type */
     uint8_t remlen;     /* Remaining length */
 
@@ -41,10 +43,17 @@ ICACHE_FLASH_ATTR void mqtt_process(struct espconn *conn) {
         }
     }
 
+    else if (type == 0xd) {
+        if ((rv = mqtt_pkt_pingresp(mqttstate.buf, mqttstate.bufused)) == -1)
+            os_printf("mqtt_process: ping resp: invalid/incomplete packet\n");
+        else if (rv == 0) {
+            os_printf("mqtt_process: ping resp\n");
+            consume = 1;
+        }
+    }
+
     if (consume) {
         os_memmove(mqttstate.buf, mqttstate.buf + 2+remlen, mqttstate.bufused - (2+remlen));
         mqttstate.bufused -= 2 + remlen;
     }
-
-    /* FIXME STOPPED Create an mqtt task (in user_main()) that publishes data and reconnects (also pings?) as necessary */
 }
