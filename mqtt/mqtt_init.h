@@ -15,10 +15,14 @@ typedef struct {
         #define MQTT_PASS "guest"
     #endif
 
+    #define MQTT_PUBLISH_RATE  60
+    #define MQTT_PUBLISH_TOPIC "test"
+
     #define MQTT_KEEPALIVE 60   /* 0 <= keepalive < 2**16 */
 
     uint8_t  connected;
     uint32_t prevactivity;      /* Previous connect attempt or transmit time */
+    uint32_t prevpublish;       /* Previous publish time */
 
     uint8_t buf[1024];
     size_t  bufused;

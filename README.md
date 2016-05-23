@@ -5,6 +5,9 @@ Motley of basic and portable servers and clients written for the ESP8266 ultimat
 * HTTP server
  * POST requests
  * HTTP-based network config
+* MQTT v3.1.1 client
+ * Publishing with QoS 0
+ * Reconnects and pings
 
 # TODO
 * Implement OTA flashing via HTTP POST
@@ -12,7 +15,6 @@ Motley of basic and portable servers and clients written for the ESP8266 ultimat
 * Verify HTTP server implementation follows the RFCs
  * Is there a testing procedure that can be followed to do this?
 * SMTP client
-* MQTT client v3.1.1
 * Host a filesystem off an SD card
 * Provide a user method to reset network settings
  * Perhaps hold a GPIO low/high for X seconds?
@@ -40,7 +42,7 @@ note that cannot use a standard utility like minicom because the ESP8266 bootloa
 # RabbitMQ MQTT plugin
 For remote access with the RabbitMQ MQTT plugin, the default (ie when not provided) user/pass will result in refused connections with a "not authorized" error code, because the default user can only connect via localhost (refer to http://www.rabbitmq.com/access-control.html).
 
-One workaround is to create a user (rabbitmqctl add_user <user> <pass>) and modify mqtt/mqtt_init.h appropriately.  Another is to modify the RabbitMQ config to allow access from the default user from anywhere on the network via the parameter loopback_users.
+One workaround is to create a user (rabbitmqctl add_user user pass) and modify mqtt/mqtt_init.h appropriately.  Another is to modify the RabbitMQ config to allow access from the default user from anywhere on the network via the parameter loopback_users.
 
 # License
 This software is freely available for non-commerical use, commerical use requires an expressed agreement from the author.

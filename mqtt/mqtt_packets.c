@@ -167,3 +167,47 @@ ICACHE_FLASH_ATTR int mqtt_pkt_pingresp(uint8_t *buf, uint8_t len) {
 
     return 0;
 }
+
+ICACHE_FLASH_ATTR int mqtt_pkt_publish(uint8_t *buf, uint16_t len, uint16_t *used, uint8_t *topic, uint8_t *data) {
+    uint8_t *pkt = buf;
+
+    uint16_t remlen;    /* Remaining length */
+
+    if (os_strlen((char *)topic) == 0)
+        return MQTT_PKT_INVALID;
+
+    remlen = 2 + os_strlen((char *)topic) + os_strlen((char *)data);
+
+    if (remlen > 255)          return MQTT_PKT_INVALID;
+    else if (2 + remlen > len) return MQTT_PKT_OVERFLOW;
+
+    /*
+     * Fixed header
+     */
+
+    /*
+     *  DUP flag = 0
+     * QoS level = 0
+     *    RETAIN = 0
+     */
+   pkt += os_sprintf((char *)pkt, "\x30%c", remlen);
+
+   /*
+    * Variable header
+    */
+
+   pkt += os_sprintf((char *)pkt, "%c%c", (os_strlen((char *)topic)>>8) & 0x0ff,
+                                           os_strlen((char *)topic)     & 0x0ff);
+   pkt += os_sprintf((char *)pkt, "%s", topic);
+
+   /* Packet identifiers are only for QoS levels 1 and 2 */
+
+   /*
+    * Payload
+    */
+
+   pkt += os_sprintf((char *)pkt, "%s", data);
+
+   *used = 2 + remlen;
+   return 0;
+}

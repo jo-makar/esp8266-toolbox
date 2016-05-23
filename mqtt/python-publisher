@@ -124,7 +124,7 @@ def publish_packet(data):
     topic = 'test'
     assert 0 < len(topic)
 
-    remlen = 2+len(topic) + 2+len(data)
+    remlen = 2+len(topic) + len(data)
     assert remlen < 256
 
     #
@@ -151,7 +151,6 @@ def publish_packet(data):
     # Payload
     #
 
-    packet += chr((len(data)>>8) & 0x0ff) + chr(len(data) & 0x0ff)
     packet += data
 
     return packet
