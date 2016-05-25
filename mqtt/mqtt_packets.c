@@ -10,6 +10,62 @@
 #define MQTT_PKT_INVALID  1
 #define MQTT_PKT_OVERFLOW 2
 
+ICACHE_FLASH_ATTR int encode_remlen(uint8_t *buf, uint32_t remlen) {
+    /*
+     * Encode and write remaining length.
+     * Return bytes used or -1 for error (remlen too large).
+     */
+
+    if (remlen <= 127)
+        return os_sprintf((char *)buf, "%c", remlen);
+
+    else if (remlen <= 127 + 127*128)
+        return os_sprintf((char *)buf, "%c%c", 0x80 | (remlen       & 0x7f),
+                                                      (remlen >> 7) & 0x7f);
+
+    else if (remlen <= 127 + 127*128 + 127*128*128)
+        return os_sprintf((char *)buf, "%c%c%c", 0x80 |  (remlen         & 0x7f),
+                                                 0x80 | ((remlen >> 7)   & 0x7f),
+                                                         (remlen >> 7*2) & 0x7f);
+
+    else if (remlen <= 127 + 127*128 + 127*128*128 + 127*128*128*128)
+        return os_sprintf((char *)buf, "%c%c%c%c", 0x80 |  (remlen         & 0x7f),
+                                                   0x80 | ((remlen >> 7)   & 0x7f),
+                                                   0x80 | ((remlen >> 7*2) & 0x7f),
+                                                           (remlen >> 7*3) & 0x7f);
+
+    else
+        return -1;
+}
+
+ICACHE_FLASH_ATTR uint32_t decode_remlen(uint8_t *pkt, uint8_t *used) {
+    if ((pkt[1] & 0x80) == 0) {
+        *used = 1;
+        return pkt[1];
+    }
+
+    else if ((pkt[2] & 0x80) == 0) {
+        *used = 2;
+        return (pkt[1] & 0x7f) + pkt[2]*128;
+    }
+
+    else if ((pkt[3] & 0x80) == 0) {
+        *used = 3;
+        return (pkt[1] & 0x7f) + pkt[2]*128 + pkt[3]*128*128;
+    }
+
+    else if ((pkt[4] & 0x80) == 0) {
+        *used = 4;
+        return (pkt[1] & 0x7f) + pkt[2]*128 + pkt[3]*128*128 + pkt[4]*128*128*128;
+    }
+
+    else
+        /* Two's complement representation is all one bits and exceeds the max possible value */
+        return (uint32_t)-1;
+}
+
+/* FIXME Incorporate encode,decode_remlen below */
+
 ICACHE_FLASH_ATTR int mqtt_pkt_connect(uint8_t *buf, uint16_t len, uint16_t *used) {
     /*
      * NB The following does not handle passwords with embedded null bytes,
@@ -22,7 +78,8 @@ ICACHE_FLASH_ATTR int mqtt_pkt_connect(uint8_t *buf, uint16_t len, uint16_t *use
 
     uint8_t *pkt = buf;
     
-    uint16_t remlen;    /* Remaining length */
+    uint16_t remlen;        /* Remaining length */
+    int      remlen_used;   /* Remaining length used bytes */
 
     os_snprintf((char *)clientid, sizeof(clientid),
                 "%s%08x", CLIENTID_PREFIX, system_get_chip_id());
@@ -33,14 +90,18 @@ ICACHE_FLASH_ATTR int mqtt_pkt_connect(uint8_t *buf, uint16_t len, uint16_t *use
         remlen += 2 + os_strlen(MQTT_USER) + 2 + os_strlen(MQTT_PASS);
     #endif
 
-    if (remlen > 255)          return MQTT_PKT_INVALID;
-    else if (2 + remlen > len) return MQTT_PKT_OVERFLOW;
+    if (2 + remlen > len)
+        return MQTT_PKT_OVERFLOW;
 
     /*
      * Fixed header
      */
 
-    pkt += os_sprintf((char *)pkt, "\x10%c", remlen);
+    pkt += os_sprintf((char *)pkt, "\x10");
+
+    if ((remlen_used = encode_remlen(pkt, remlen)) == -1)
+        return MQTT_PKT_INVALID;
+    pkt += remlen_used;
 
     /*
      * Variable header
@@ -88,17 +149,18 @@ ICACHE_FLASH_ATTR int mqtt_pkt_connect(uint8_t *buf, uint16_t len, uint16_t *use
         pkt += os_sprintf((char *)pkt, "%s", MQTT_PASS);
     #endif
 
-    *used = 2 + remlen;
+    *used = 1 + remlen_used + remlen;
     return 0;
 }
 
 ICACHE_FLASH_ATTR int mqtt_pkt_connectack(uint8_t *buf, uint8_t len) {
     uint8_t *pkt = buf;
 
-    uint8_t type;       /* Control packet type */
-    uint8_t remlen;     /* Remaining length */
-    uint8_t session;    /* Session present flag */
-    uint8_t connect;    /* Connect return code */
+    uint8_t  type;          /* Control packet type */
+    uint32_t remlen;        /* Remaining length */
+    uint8_t  remlen_used;   /* Remaining length used bytes */
+    uint8_t  session;       /* Session present flag */
+    uint8_t  connect;       /* Connect return code */
 
     if (len < 2)
         return -1;
@@ -107,8 +169,11 @@ ICACHE_FLASH_ATTR int mqtt_pkt_connectack(uint8_t *buf, uint8_t len) {
      * Fixed header
      */
 
-    type   = (*(pkt++) >> 4) & 0x0f;
-    remlen = *(pkt++);
+    type = (*(pkt++) >> 4) & 0x0f;
+
+    if ((remlen = decode_remlen(buf, &remlen_used)) == (uint32_t)-1)
+        return -1;
+    pkt += remlen_used;
 
     if (type != 2)
         return -1;
@@ -147,8 +212,9 @@ ICACHE_FLASH_ATTR int mqtt_pkt_pingreq(uint8_t *buf, uint16_t len, uint16_t *use
 ICACHE_FLASH_ATTR int mqtt_pkt_pingresp(uint8_t *buf, uint8_t len) {
     uint8_t *pkt = buf;
 
-    uint8_t type;       /* Control packet type */
-    uint8_t remlen;     /* Remaining length */
+    uint8_t type;           /* Control packet type */
+    uint32_t remlen;        /* Remaining length */
+    uint8_t  remlen_used;   /* Remaining length used bytes */
 
     if (len < 2)
         return -1;
@@ -157,8 +223,11 @@ ICACHE_FLASH_ATTR int mqtt_pkt_pingresp(uint8_t *buf, uint8_t len) {
      * Fixed header
      */
 
-    type   = (*(pkt++) >> 4) & 0x0f;
-    remlen =  *(pkt++);
+    type = (*(pkt++) >> 4) & 0x0f;
+
+    if ((remlen = decode_remlen(buf, &remlen_used)) == (uint32_t)-1)
+        return -1;
+    pkt += remlen_used;
 
     if (type != 0xd)
         return -1;
@@ -171,15 +240,16 @@ ICACHE_FLASH_ATTR int mqtt_pkt_pingresp(uint8_t *buf, uint8_t len) {
 ICACHE_FLASH_ATTR int mqtt_pkt_publish(uint8_t *buf, uint16_t len, uint16_t *used, uint8_t *topic, uint8_t *data) {
     uint8_t *pkt = buf;
 
-    uint16_t remlen;    /* Remaining length */
+    uint16_t remlen;        /* Remaining length */
+    int      remlen_used;   /* Remaining length used bytes */
 
     if (os_strlen((char *)topic) == 0)
         return MQTT_PKT_INVALID;
 
     remlen = 2 + os_strlen((char *)topic) + os_strlen((char *)data);
 
-    if (remlen > 255)          return MQTT_PKT_INVALID;
-    else if (2 + remlen > len) return MQTT_PKT_OVERFLOW;
+    if (2 + remlen > len)
+        return MQTT_PKT_OVERFLOW;
 
     /*
      * Fixed header
@@ -190,7 +260,11 @@ ICACHE_FLASH_ATTR int mqtt_pkt_publish(uint8_t *buf, uint16_t len, uint16_t *use
      * QoS level = 0
      *    RETAIN = 0
      */
-   pkt += os_sprintf((char *)pkt, "\x30%c", remlen);
+   pkt += os_sprintf((char *)pkt, "\x30");
+
+   if ((remlen_used = encode_remlen(pkt, remlen)) == -1)
+       return MQTT_PKT_INVALID;
+   pkt += remlen_used;
 
    /*
     * Variable header
@@ -208,6 +282,6 @@ ICACHE_FLASH_ATTR int mqtt_pkt_publish(uint8_t *buf, uint16_t len, uint16_t *use
 
    pkt += os_sprintf((char *)pkt, "%s", data);
 
-   *used = 2 + remlen;
+   *used = 1 + remlen_used + remlen;
    return 0;
 }

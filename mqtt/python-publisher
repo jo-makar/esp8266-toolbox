@@ -4,6 +4,47 @@ from   datetime import datetime
 import socket
 from   time     import sleep
 
+def encode_remlen(remlen):
+    if remlen <= 127:
+        return chr(remlen)
+
+    elif remlen <= 127 + 127*128:
+        return chr(0x80 | (remlen       & 0x7f)) + \
+               chr(       (remlen >> 7) & 0x7f)
+
+    elif remlen <= 127 + 127*128 + 127*128**2:
+        return chr(0x80 | ( remlen         & 0x7f)) + \
+               chr(0x80 | ((remlen >> 7)   & 0x7f)) + \
+               chr(       ((remlen >> 7*2) & 0x7f))
+
+    elif remlen <= 127 + 127*128 + 127*128**2 + 127*128**3:
+        return chr(0x80 | ( remlen         & 0x7f)) + \
+               chr(0x80 | ((remlen >> 7)   & 0x7f)) + \
+               chr(0x80 | ((remlen >> 7*2) & 0x7f)) + \
+               chr(       ((remlen >> 7*3) & 0x7f))
+
+    else:
+        assert False
+
+def decode_remlen(packet):
+    if ord(packet[1]) & 0x80 == 0:
+        return 1, ord(packet[1])
+
+    elif ord(packet[2]) & 0x80 == 0:
+        return 2, (ord(packet[1]) & 0x7f) + ord(packet[2])*128
+
+    elif ord(packet[3]) & 0x80 == 0:
+        return 3, (ord(packet[1]) & 0x7f) + ord(packet[2])*128 + \
+                                            ord(packet[3])*128**2
+
+    elif ord(packet[4]) & 0x80 == 0:
+        return 4, (ord(packet[1]) & 0x7f) + ord(packet[2])*128    + \
+                                            ord(packet[3])*128**2 + \
+                                            ord(packet[4])*128**3
+
+    else:
+        assert False
+
 def connect_packet():
     #user, passwd = 'guest', 'guest'
     user, passwd = None, None
@@ -17,13 +58,14 @@ def connect_packet():
     remlen = 10 + 2+len(clientid)
     if useauth:
         remlen += 2+len(user) + 2+len(passwd)
-    assert remlen < 256
+
+    encremlen = encode_remlen(remlen)
 
     #
     # Fixed header
     #
 
-    packet = '\x10' + chr(remlen)
+    packet = '\x10' + encremlen
 
     #
     # Variable header
@@ -63,7 +105,7 @@ def connect_packet():
         packet += chr((len(passwd)>>8) & 0x0ff) + chr(len(passwd) & 0x0ff)
         packet += passwd
 
-    assert len(packet) == 2 + 10 + 2+len(clientid) + \
+    assert len(packet) == 1 + len(encremlen) + 10 + 2+len(clientid) + \
                (2+len(user) + 2+len(passwd) if useauth else 0)
 
     return packet
@@ -76,14 +118,15 @@ def connectack_packet(packet):
     #
 
     contents['control packet type'] = (ord(packet[0]) >> 4) & 0x0f
-    contents['remaining length']    = ord(packet[1])
+
+    nbytes, contents['remaining length'] = decode_remlen(packet)
 
     #
     # Variable header
     #
 
-    contents['session present']     = ord(packet[2]) & 0x01
-    contents['connect return code'] = ord(packet[3])
+    contents['session present']     = ord(packet[1+nbytes]) & 0x01
+    contents['connect return code'] = ord(packet[2+nbytes])
 
     assert contents['control packet type'] == 2
     assert    contents['remaining length'] == 2
@@ -115,7 +158,7 @@ def pingresp_packet(packet):
     #
 
     contents['control packet type'] = (ord(packet[0]) >> 4) & 0x0f
-    contents['remaining length']    = ord(packet[1])
+    contents['remaining length']    = decode_remlen(packet)
 
     assert contents == {'control packet type': 0xd,
                            'remaining length': 0}
@@ -124,8 +167,8 @@ def publish_packet(data):
     topic = 'test'
     assert 0 < len(topic)
 
-    remlen = 2+len(topic) + len(data)
-    assert remlen < 256
+    remlen    = 2+len(topic) + len(data)
+    encremlen = encode_remlen(remlen)
 
     #
     # Fixed header
@@ -136,7 +179,7 @@ def publish_packet(data):
     #    RETAIN = 0
     packet = '\x30'
 
-    packet += chr(remlen)
+    packet += encremlen
 
     #
     # Variable header

@@ -100,6 +100,8 @@ ICACHE_FLASH_ATTR void mqtt_connect_cb(void *arg) {
         }
     }
 
+    /* FIXME STOPPED Send subscribe packet */
+
     return;
 
     drop:
