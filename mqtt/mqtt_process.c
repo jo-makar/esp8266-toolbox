@@ -11,8 +11,9 @@
 ICACHE_FLASH_ATTR void mqtt_process(struct espconn *conn) {
     (void)conn;
 
-    uint8_t type;       /* Control packet type */
-    uint8_t remlen;     /* Remaining length */
+    uint8_t  type;          /* Control packet type */
+    uint32_t remlen;        /* Remaining length */
+    uint8_t  remlen_used;   /* Remaining length used bytes */
 
     int rv;
     int consume = 0;
@@ -24,10 +25,14 @@ ICACHE_FLASH_ATTR void mqtt_process(struct espconn *conn) {
      * Fixed header
      */
 
-    type   = (mqttstate.buf[0] >> 4) & 0x0f;
-    remlen = mqttstate.buf[1];
+    type = (mqttstate.buf[0] >> 4) & 0x0f;
 
-    if (mqttstate.bufused - 2 < remlen)
+    /* Invalid remaining length field, mqttstate.buf eventually fills and the connection is reset */
+    if ((remlen = decode_remlen(mqttstate.buf, &remlen_used)) == (uint32_t)-1)
+        return;
+
+    /* More data anticipated than currently in the buffer, later call will */
+    if (mqttstate.bufused - (1 + remlen_used) < remlen)
         return;
 
     if (type == 2) {
@@ -53,7 +58,10 @@ ICACHE_FLASH_ATTR void mqtt_process(struct espconn *conn) {
     }
 
     if (consume) {
-        os_memmove(mqttstate.buf, mqttstate.buf + 2+remlen, mqttstate.bufused - (2+remlen));
-        mqttstate.bufused -= 2 + remlen;
+        os_memmove(mqttstate.buf,
+                   mqttstate.buf     +  1+remlen_used+remlen,
+                   mqttstate.bufused - (1+remlen_used+remlen));
+
+        mqttstate.bufused -= 1 + remlen_used + remlen;
     }
 }

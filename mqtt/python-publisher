@@ -50,9 +50,10 @@ def connect_packet():
     user, passwd = None, None
     useauth = user is not None and passwd is not None
 
-    # To be generated from the 32-bit system_get_chip_id()
-    # NB client ids must be unique, the RabbitMQ MQTT impl. will drop the (old) duplicate
-    clientid = 'python-esp8266_000ef1e8'
+    # NB Client ids must be unique, the RabbitMQ MQTT impl. will drop the (old) duplicate
+    #    Unique trailing identifier to be generated from the 32-bit system_get_chip_id()
+    #    Only alphanumerics are required to be supported by servers according to the standard
+    clientid = 'pyesp000ef1e8'
     assert 0 < len(clientid) and len(clientid) <= 23
 
     remlen = 10 + 2+len(clientid)
@@ -163,8 +164,7 @@ def pingresp_packet(packet):
     assert contents == {'control packet type': 0xd,
                            'remaining length': 0}
 
-def publish_packet(data):
-    topic = 'test'
+def publish_packet(data, topic='test'):
     assert 0 < len(topic)
 
     remlen    = 2+len(topic) + len(data)
@@ -224,12 +224,24 @@ if __name__ == '__main__':
     #
 
     send(sock, connect_packet())
-    packet  = recv(sock, 2)
-    packet += recv(sock, ord(packet[1]))
     print '>>> CONNECT'
 
+    packet = recv(sock, 2)
+    # Should refactor to support larger packets (via decode_remlen)
+    assert ord(packet[1]) & 0x80 == 0
+    packet += recv(sock, ord(packet[1]))
     assert connectack_packet(packet) == 0
     print '<<< CONNECTACK'
+
+    # FIXME STOPPED
+    #
+    #send(sock, subscribe_packet())
+    #print '>>> SUBSCRIBE'
+    #
+    #packet  = recv(sock, 2)
+    #packet += recv(sock, ord(packet[1]))
+    #assert suback_packet(packet) == 0
+    #print '<<< SUBACK'
 
     while True:
         #
@@ -238,17 +250,19 @@ if __name__ == '__main__':
 
         payload = 'python ' + datetime.now().strftime('%Y%m%d%H%M%S')
         send(sock, publish_packet(payload))
-        print '>>> PUBLISH'
+        print '>>> PUBLISH "%s"' % payload
         # No response for QoS level 0
 
         #
-        # Ping
+        # Ping request/reply
         #
         # Only necessary if the publish period is shorter than the keepalive
         #
 
         #send(sock, pingreq_packet())
-        #packet  = recv(sock, 2)
+        #packet = recv(sock, 2)
+        # Should refactor to support larger packets (via decode_remlen)
+        #assert ord(packet[1]) & 0x80 == 0
         #packet += recv(sock, ord(packet[1]))
         #print '>>> PINGREQ'
 

@@ -64,15 +64,14 @@ ICACHE_FLASH_ATTR uint32_t decode_remlen(uint8_t *pkt, uint8_t *used) {
         return (uint32_t)-1;
 }
 
-/* FIXME Incorporate encode,decode_remlen below */
-
 ICACHE_FLASH_ATTR int mqtt_pkt_connect(uint8_t *buf, uint16_t len, uint16_t *used) {
     /*
      * NB The following does not handle passwords with embedded null bytes,
      *    which is possible since passwords are binary data (unlike usernames)
      */
 
-    #define CLIENTID_PREFIX "esp8266_"
+    /* Only alphanumerics are required to be supported by servers */
+    #define CLIENTID_PREFIX "esp"
     uint8_t clientid[os_strlen(CLIENTID_PREFIX) + 8 + 1];
     /* NB Client id length must be less than or equal to 23 chars */
 
