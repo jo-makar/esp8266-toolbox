@@ -1,69 +1,63 @@
-TOOLCHAIN_BASEPATH = /home/joe/local/local-esp-open-sdk/xtensa-lx106-elf
-SDK_BASEPATH       = $(TOOLCHAIN_BASEPATH)/xtensa-lx106-elf/sysroot/usr
+# Build an application without OTA upgrade support
 
-########################################
+TOOLCHAIN_PATH ?= $(HOME)/local/esp-open-sdk/xtensa-lx106-elf/bin
+SDK_PATH ?= $(HOME)/local/esp-open-sdk/xtensa-lx106-elf/xtensa-lx106-elf/sysroot
 
-src = $(wildcard *.c) $(wildcard httpd/*.c) $(wildcard mqtt/*.c)
-obj = $(src:.c=.o)
-dep = $(src:.c=.d)
+PORT ?= /dev/ttyUSB0
 
-# The --start,end-group is necessary for the references between the SDK libraries
-sdklibs = --start-group -llwip -lmain -lnet80211 -lphy -lpp -lwpa --end-group
-LDLIBS  = $(TOOLCHAIN_BASEPATH)/lib/gcc/xtensa-lx106-elf/4.8.2/libgcc.a
+#################################################################################
 
-CC = $(TOOLCHAIN_BASEPATH)/bin/xtensa-lx106-elf-cc
-LD = $(TOOLCHAIN_BASEPATH)/bin/xtensa-lx106-elf-ld
+SRC = $(wildcard *.c)
+OBJ = $(SRC:.c=.o)
+DEP = $(SRC:.c=.d)
 
-OBJDUMP = $(TOOLCHAIN_BASEPATH)/bin/xtensa-lx106-elf-objdump
-OBJCOPY = $(TOOLCHAIN_BASEPATH)/bin/xtensa-lx106-elf-objcopy
+CC = $(TOOLCHAIN_PATH)/xtensa-lx106-elf-gcc
+LD = $(TOOLCHAIN_PATH)/xtensa-lx106-elf-ld
 
-# When the macro ICACHE_FLASH is defined code/rodata marked with ICACHE_FLASH/RODATA_ATTR gets loaded into
-# the irom0text.bin (irom0_0_seg) section of flash and are loaded on demand into the MCUs RAM for execution.
-# Otherwise code/rodata is loaded into the significantly smaller flash.bin (iram1_0_seg).
-# NB Some code, such as ISRs, must not be marked with with ICACHE_FLASH_ATTR.
+ESPTOOL = $(TOOLCHAIN_PATH)/esptool.py
 
-CFLAGS  = -Os -Wall -Wextra -fno-inline-functions -ffunction-sections -fdata-sections -mlongcalls -mtext-section-literals -DICACHE_FLASH
+# When ICACHE_FLASH is defined, code (rodata) marked with ICACHE_FLASH_ATTR
+# (ICACHE_RODATA_ATTR) gets loaded into the irom0text section rather than RAM.
+# NB Some code, such as ISRs, must not be marked with the ICACHE_FLASH_ATTR.
+
+CFLAGS = -Os -Wall -Wextra -mlongcalls -mtext-section-literals -DICACHE_FLASH
 LDFLAGS = -EL -nostdlib -static --gc-sections
 
-ESPTOOL = $(TOOLCHAIN_BASEPATH)/bin/esptool.py
+# The --start/end-group is necessary for the references between the libraries
+SDKLIBS = --start-group -lc -lgcc -lhal -llwip -lmain -lnet80211 -lpp -lphy \
+                        -lwpa --end-group
 
-user1.bin user2.bin: app1.elf app2.elf
-	@# NB $(OBJDUMP) -h app{1,2}.elf can be used to list section headers
+app.elf-0x00000.bin app.elf-0x40000.bin: app.elf
+	@echo ELF2IMAGE $<
+	@$(ESPTOOL) elf2image $<
 
-	$(OBJCOPY) -j .text       -O binary app1.elf eagle.app.v6.text.bin
-	$(OBJCOPY) -j .irom0.text -O binary app1.elf eagle.app.v6.irom0text.bin
-	$(OBJCOPY) -j .data       -O binary app1.elf eagle.app.v6.data.bin
-	$(OBJCOPY) -j .rodata     -O binary app1.elf eagle.app.v6.rodata.bin
-	@# boot_mode = 2, flash_mode = 0/QIO,  flash_clk_div = 15 (80 Mhz), flash_size_map = 2 (1024 KB), user_bin = 0
-	COMPILE=gcc PATH=$$PATH:`dirname $(CC)` python gen_appbin.py app1.elf 2 0 15 2 0
-	mv eagle.app.flash.bin user1.bin
-	rm -f eagle.app.v6.*.bin
+	@# The _irom0_text_start is set incorrectly in the linker script
+	@# which makes the app.elf-0x10000.bin filename incorrect
+	@mv app.elf-0x10000.bin app.elf-0x40000.bin
 
-	$(OBJCOPY) -j .text       -O binary app2.elf eagle.app.v6.text.bin
-	$(OBJCOPY) -j .irom0.text -O binary app2.elf eagle.app.v6.irom0text.bin
-	$(OBJCOPY) -j .data       -O binary app2.elf eagle.app.v6.data.bin
-	$(OBJCOPY) -j .rodata     -O binary app2.elf eagle.app.v6.rodata.bin
-	COMPILE=gcc PATH=$$PATH:`dirname $(CC)` python gen_appbin.py app2.elf 2 0 15 2 0
-	mv eagle.app.flash.bin user2.bin
-	rm -f eagle.app.v6.*.bin
+	@# Verify app.elf-0x00000.bin (user app) is <= 248K
+	@du -b app.elf-0x00000.bin
+	@test `du -b app.elf-0x00000.bin | awk '{print $$1}'` -le 253952 || false
 
-app1.elf app2.elf: $(obj)
-	$(LD) $(LDFLAGS) -L$(SDK_BASEPATH)/lib -T ld/eagle.app.v6.new.1024.app1.ld -o app1.elf $^ $(sdklibs) $(LDLIBS)
-	$(LD) $(LDFLAGS) -L$(SDK_BASEPATH)/lib -T ld/eagle.app.v6.new.1024.app2.ld -o app2.elf $^ $(sdklibs) $(LDLIBS)
+	@# Verify app.elf-0x40000.bin (sdk libs) is <= 240K
+	@du -b app.elf-0x40000.bin
+	@test `du -b app.elf-0x40000.bin | awk '{print $$1}'` -le 245760  || false
+
+app.elf: $(OBJ)
+	@echo LD $@ ...
+	@$(LD) $(LDFLAGS) -L$(SDK_PATH)/usr/lib -L$(SDK_PATH)/lib \
+		-T$(SDK_PATH)/usr/lib/eagle.app.v6.ld -o $@ $^ $(SDKLIBS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -I. -I$(SDK_BASEPATH)/include -MD -MF $(@:.o=.d) -c -o $@ $<
+	@echo CC $<
+	@$(CC) $(CFLAGS) -MD -MF $(@:.o=.d) -I. -c $<
 
--include $(dep)
+-include $(DEP)
 
 clean:
-	rm -f user1.bin user2.bin app1.elf app2.elf $(obj) $(dep)
+	@rm -f app.elf app.elf-*.bin $(OBJ) $(DEP)
 
-# Flashing over USB requires that the ESP8266 be in bootloader mode, this can be done by holding GPIO0 low during boot
-
-flash: user1.bin
-	$(ESPTOOL) write_flash -fs 8m -ff 80m 0x00000 boot_v1.5.bin 0x01000 user1.bin \
-		0x7e000 blank.bin 0xfc000 esp_init_data_default.bin 0xfe000 blank.bin
-
-flash-user1: user1.bin
-	$(ESPTOOL) write_flash -fs 8m -ff 80m 0x01000 user1.bin
+# Hold GPIO0 low during boot to flash over USB
+flash: app.elf-0x00000.bin app.elf-0x40000.bin
+	@echo WRITE_FLASH app.elf-\*.bin
+	@$(ESPTOOL) -p $(PORT) write_flash 0x00000 app.elf-0x00000.bin 0x40000 app.elf-0x40000.bin
