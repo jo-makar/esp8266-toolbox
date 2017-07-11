@@ -4,7 +4,7 @@ Motley of servers and clients written for the ESP8266
 # Installation (Linux)
 1. Install the ESP8266 toolchain and SDK if not already installed:
    https://github.com/pfalcon/esp-open-sdk
-1. Modify the toolchain and SDK paths in the Makefile if necessary
+1. Modify the variables at the top of the Makefile if necessary
 1. Run `make` to build the binaries
 1. Power and connect the ESP8266 via USB/serial
 1. Put the ESP8266 in flash mode by holding GPIO0 low during boot
