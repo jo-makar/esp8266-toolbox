@@ -38,11 +38,7 @@ ESPTOOL = $(TOOLCHAIN_PATH)/esptool.py
 
 GEN_APPBIN = $(NONOS_SDK_PATH)/tools/gen_appbin.py
 
-# When ICACHE_FLASH is defined, code (rodata) marked with ICACHE_FLASH_ATTR
-# (ICACHE_RODATA_ATTR) gets loaded into the irom0text section rather than RAM.
-# NB Some code, such as ISRs, must not be marked with the ICACHE_FLASH_ATTR.
-
-CFLAGS = -Os -Wall -Wextra -mlongcalls -mtext-section-literals -DICACHE_FLASH
+CFLAGS = -Os -Wall -Wextra -mlongcalls -mtext-section-literals
 LDFLAGS = -EL -nostdlib -static --gc-sections
 
 # The --start/end-group is necessary for the references between the libraries
