@@ -1,0 +1,317 @@
+EESchema Schematic File Version 2
+LIBS:power
+LIBS:device
+LIBS:transistors
+LIBS:conn
+LIBS:linear
+LIBS:regul
+LIBS:74xx
+LIBS:cmos4000
+LIBS:adc-dac
+LIBS:memory
+LIBS:xilinx
+LIBS:special
+LIBS:microcontrollers
+LIBS:dsp
+LIBS:microchip
+LIBS:analog_switches
+LIBS:motorola
+LIBS:texas
+LIBS:intel
+LIBS:audio
+LIBS:interface
+LIBS:digital-audio
+LIBS:philips
+LIBS:display
+LIBS:cypress
+LIBS:siliconi
+LIBS:opto
+LIBS:atmel
+LIBS:contrib
+LIBS:valves
+LIBS:microchip_pic12mcu
+LIBS:adafruit
+LIBS:ld33v
+LIBS:sparkfun
+LIBS:dev-cache
+EELAYER 27 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title ""
+Date "12 jul 2017"
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L BARREL_JACK CON1
+U 1 1 596607F5
+P 1450 1750
+F 0 "CON1" H 1450 2000 60  0000 C CNN
+F 1 "BARREL_JACK" H 1450 1550 60  0000 C CNN
+F 2 "" H 1450 1750 60  0000 C CNN
+F 3 "" H 1450 1750 60  0000 C CNN
+	1    1450 1750
+	-1   0    0    1   
+$EndComp
+$Comp
+L SPST SW1
+U 1 1 59660835
+P 2450 1350
+F 0 "SW1" H 2450 1450 70  0000 C CNN
+F 1 "SPST" H 2450 1250 70  0000 C CNN
+F 2 "~" H 2450 1350 60  0000 C CNN
+F 3 "~" H 2450 1350 60  0000 C CNN
+	1    2450 1350
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C1
+U 1 1 59660B71
+P 3100 1700
+F 0 "C1" H 3100 1800 40  0000 L CNN
+F 1 "10 nF" H 3106 1615 40  0000 L CNN
+F 2 "~" H 3138 1550 30  0000 C CNN
+F 3 "~" H 3100 1700 60  0000 C CNN
+	1    3100 1700
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C2
+U 1 1 59660B80
+P 4650 1700
+F 0 "C2" H 4650 1800 40  0000 L CNN
+F 1 "10 uF" H 4656 1615 40  0000 L CNN
+F 2 "~" H 4688 1550 30  0000 C CNN
+F 3 "~" H 4650 1700 60  0000 C CNN
+	1    4650 1700
+	1    0    0    -1  
+$EndComp
+$Comp
+L SW_PUSH SW3
+U 1 1 59660BB3
+P 7000 4250
+F 0 "SW3" H 7150 4360 50  0000 C CNN
+F 1 "SW_PUSH" H 7000 4170 50  0000 C CNN
+F 2 "~" H 7000 4250 60  0000 C CNN
+F 3 "~" H 7000 4250 60  0000 C CNN
+	1    7000 4250
+	1    0    0    -1  
+$EndComp
+$Comp
+L SW_PUSH SW2
+U 1 1 59660BC2
+P 7000 3550
+F 0 "SW2" H 7150 3660 50  0000 C CNN
+F 1 "SW_PUSH" H 7000 3470 50  0000 C CNN
+F 2 "~" H 7000 3550 60  0000 C CNN
+F 3 "~" H 7000 3550 60  0000 C CNN
+	1    7000 3550
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR1
+U 1 1 59660EA9
+P 1050 2150
+F 0 "#PWR1" H 1050 2150 30  0001 C CNN
+F 1 "GND" H 1050 2080 30  0001 C CNN
+F 2 "" H 1050 2150 60  0000 C CNN
+F 3 "" H 1050 2150 60  0000 C CNN
+	1    1050 2150
+	1    0    0    -1  
+$EndComp
+Text Label 1300 1350 0    60   ~ 0
+5V
+$Comp
+L GND #PWR3
+U 1 1 596610AB
+P 3900 2150
+F 0 "#PWR3" H 3900 2150 30  0001 C CNN
+F 1 "GND" H 3900 2080 30  0001 C CNN
+F 2 "" H 3900 2150 60  0000 C CNN
+F 3 "" H 3900 2150 60  0000 C CNN
+	1    3900 2150
+	1    0    0    -1  
+$EndComp
+$Comp
+L LD33V U2
+U 1 1 59661176
+P 3900 1350
+F 0 "U2" H 3650 1150 60  0000 C CNN
+F 1 "LD33V" H 3900 1350 60  0000 C CNN
+F 2 "~" H 3900 1350 60  0000 C CNN
+F 3 "~" H 3900 1350 60  0000 C CNN
+	1    3900 1350
+	1    0    0    -1  
+$EndComp
+$Comp
+L 3V3 #PWR6
+U 1 1 5966119A
+P 4650 1000
+F 0 "#PWR6" H 4650 1100 40  0001 C CNN
+F 1 "3V3" H 4650 1125 40  0000 C CNN
+F 2 "" H 4650 1000 60  0000 C CNN
+F 3 "" H 4650 1000 60  0000 C CNN
+	1    4650 1000
+	1    0    0    -1  
+$EndComp
+Text Notes 950  900  0    60   ~ 0
+Use a 5V supply capable of sourcing at least 500mA.\nThe current from the FTDI will likely be insufficient.
+$Comp
+L SPARKFUN_FTDI_BASIC_BREAKOUT U1
+U 1 1 59661348
+P 1800 3500
+F 0 "U1" H 2550 3350 60  0000 C CNN
+F 1 "SPARKFUN_FTDI_BASIC_BREAKOUT" H 1800 3500 60  0000 C CNN
+F 2 "~" H 1800 3500 60  0000 C CNN
+F 3 "~" H 1800 3500 60  0000 C CNN
+	1    1800 3500
+	1    0    0    -1  
+$EndComp
+$Comp
+L ADAFRUIT_HUZZAH_ESP8266_BREAKOUT U3
+U 1 1 596613D3
+P 5050 3900
+F 0 "U3" H 5000 4050 60  0000 C CNN
+F 1 "ADAFRUIT_HUZZAH_ESP8266_BREAKOUT" H 5050 3900 60  0000 C CNN
+F 2 "~" H 5050 3900 60  0000 C CNN
+F 3 "~" H 5050 3900 60  0000 C CNN
+	1    5050 3900
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR2
+U 1 1 596614D5
+P 1150 4550
+F 0 "#PWR2" H 1150 4550 30  0001 C CNN
+F 1 "GND" H 1150 4480 30  0001 C CNN
+F 2 "" H 1150 4550 60  0000 C CNN
+F 3 "" H 1150 4550 60  0000 C CNN
+	1    1150 4550
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR4
+U 1 1 59661568
+P 3950 2800
+F 0 "#PWR4" H 3950 2800 30  0001 C CNN
+F 1 "GND" H 3950 2730 30  0001 C CNN
+F 2 "" H 3950 2800 60  0000 C CNN
+F 3 "" H 3950 2800 60  0000 C CNN
+	1    3950 2800
+	1    0    0    -1  
+$EndComp
+$Comp
+L 3V3 #PWR5
+U 1 1 59661595
+P 4350 2650
+F 0 "#PWR5" H 4350 2750 40  0001 C CNN
+F 1 "3V3" H 4350 2775 40  0000 C CNN
+F 2 "" H 4350 2650 60  0000 C CNN
+F 3 "" H 4350 2650 60  0000 C CNN
+	1    4350 2650
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR7
+U 1 1 59661617
+P 7300 4750
+F 0 "#PWR7" H 7300 4750 30  0001 C CNN
+F 1 "GND" H 7300 4680 30  0001 C CNN
+F 2 "" H 7300 4750 60  0000 C CNN
+F 3 "" H 7300 4750 60  0000 C CNN
+	1    7300 4750
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1150 1850 1050 1850
+Wire Wire Line
+	1050 1850 1050 2150
+Wire Wire Line
+	1150 1650 1000 1650
+Wire Wire Line
+	1000 1650 1000 1350
+Wire Wire Line
+	1000 1350 1950 1350
+Wire Wire Line
+	2950 1350 3250 1350
+Wire Wire Line
+	3100 1350 3100 1500
+Connection ~ 3100 1350
+Wire Wire Line
+	4650 1000 4650 1500
+Wire Wire Line
+	3100 1900 3100 2050
+Wire Wire Line
+	3100 2050 4650 2050
+Wire Wire Line
+	4650 2050 4650 1900
+Wire Wire Line
+	3900 1950 3900 2150
+Connection ~ 3900 2050
+Connection ~ 4650 1350
+Wire Wire Line
+	1150 4150 1150 4550
+Wire Wire Line
+	1900 4150 1900 4800
+Wire Wire Line
+	1900 4800 5750 4800
+Wire Wire Line
+	5750 4800 5750 4650
+Wire Wire Line
+	2150 4150 2150 5000
+Wire Wire Line
+	2150 5000 5950 5000
+Wire Wire Line
+	5950 5000 5950 4650
+Wire Wire Line
+	4150 3100 4150 2650
+Wire Wire Line
+	4150 2650 3950 2650
+Wire Wire Line
+	3950 2650 3950 2800
+Wire Wire Line
+	4350 2650 4350 3100
+Wire Wire Line
+	5150 4650 5150 5200
+Wire Wire Line
+	5150 5200 6700 5200
+Wire Wire Line
+	6700 5200 6700 4250
+Wire Wire Line
+	7300 3550 7300 4750
+Connection ~ 7300 4250
+Wire Wire Line
+	5950 3100 6700 3100
+Wire Wire Line
+	6700 3100 6700 3550
+Text Notes 7600 3850 0    60   ~ 0
+These switches are just a convenience,\nsince the switches on the breakout are small.\nAppropriate pullups already exist on the breakout.
+NoConn ~ 1150 1750
+NoConn ~ 1400 4150
+NoConn ~ 1650 4150
+NoConn ~ 2400 4150
+NoConn ~ 3550 3650
+NoConn ~ 3550 3800
+NoConn ~ 3550 3950
+NoConn ~ 3550 4250
+NoConn ~ 4550 3100
+NoConn ~ 4750 3100
+NoConn ~ 4950 3100
+NoConn ~ 5150 3100
+NoConn ~ 5350 3100
+NoConn ~ 5550 3100
+NoConn ~ 5750 3100
+NoConn ~ 4150 4650
+NoConn ~ 4350 4650
+NoConn ~ 4550 4650
+NoConn ~ 4750 4650
+NoConn ~ 4950 4650
+NoConn ~ 5350 4650
+NoConn ~ 5550 4700
+$EndSCHEMATC
