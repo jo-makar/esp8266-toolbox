@@ -5,13 +5,9 @@ Motley of servers and clients written for the ESP8266
 A development schematic is shown below, note that any version of the ESP8266 may
 be used though the flash size will need to be adjusted in the Makefile.
 
-![schematic](/hw/dev.svg?raw=true "Schematic")
+![schematic](/hw/dev.png?raw=true "Schematic")
 
-![schematic](hw/dev.svg?raw=true "Schematic")
-
-![schematic](/hw/dev.pdf?raw=true "Schematic")
-
-![schematic](hw/dev.pdf?raw=true "Schematic")
+![schematic](hw/dev.png?raw=true "Schematic")
 
 # Installation (Linux)
 1. Install the ESP8266 toolchain and SDK if not already installed:
