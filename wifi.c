@@ -62,7 +62,6 @@ void wifi_init() {
 
 static void wifi_evt_cb(System_Event_t *evt) {
     size_t len;
-    int i;
 
     switch (evt->event) {
         case EVENT_STAMODE_CONNECTED: {
@@ -103,20 +102,16 @@ static void wifi_evt_cb(System_Event_t *evt) {
         case EVENT_SOFTAPMODE_STACONNECTED: {
             Event_SoftAPMode_StaConnected_t *info =
                 &evt->event_info.sta_connected;
-            os_printf("wifi: softap: staconnected mac=");
-            for (i=0; i<6; i++)
-                os_printf("%02x", info->mac[i]);
-            os_printf(" aid=%02x\n", info->aid);
+            os_printf("wifi: softap: staconnected mac=" MACSTR " aid=%02x\n",
+                      MAC2STR(info->mac), info->aid);
             break;
         }
 
         case EVENT_SOFTAPMODE_STADISCONNECTED: {
             Event_SoftAPMode_StaDisconnected_t *info =
                 &evt->event_info.sta_disconnected;
-            os_printf("wifi: softap: stadisconnected mac=");
-            for (i=0; i<6; i++)
-                os_printf("%02x", info->mac[i]);
-            os_printf(" aid=%02x\n", info->aid);
+            os_printf("wifi: softap: stadisconnected mac=" MACSTR " aid=%02x\n",
+                      MAC2STR(info->mac), info->aid);
             break;
         }
 
@@ -124,10 +119,9 @@ static void wifi_evt_cb(System_Event_t *evt) {
             if (0) {
                 Event_SoftAPMode_ProbeReqRecved_t *info =
                     &evt->event_info.ap_probereqrecved;
-                os_printf("wifi: softap: probereqrecved mac=");
-                for (i=0; i<6; i++)
-                    os_printf("%02x", info->mac[i]);
-                os_printf(" rssi=%d\n", info->rssi);
+                os_printf("wifi: softap: probereqrecved "
+                          "mac=" MACSTR " rssi=%d\n",
+                          MAC2STR(info->mac), info->rssi);
             }
             break;
         }
