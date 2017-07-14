@@ -1,6 +1,8 @@
 #ifndef MISSING_DECLS_H
 #define MISSING_DECLS_H
 
+void ets_bzero(void *s, size_t n);
+
 void ets_delay_us(uint16);
 
 void ets_install_putc1(void *);

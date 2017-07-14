@@ -25,7 +25,7 @@ PORT ?= /dev/ttyUSB0
 
 #################################################################################
 
-SRC = $(wildcard *.c drivers/*.c)
+SRC = $(wildcard *.c drivers/*.c httpd/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 

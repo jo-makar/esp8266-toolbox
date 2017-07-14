@@ -1,42 +1,30 @@
-#include <osapi.h>
 #include <sys/param.h>
+#include <osapi.h>
 #include <user_interface.h>
 
+#include "config.h"
 #include "missing-decls.h"
 #include "string.h"
+#include "utils.h"
 
 static void wifi_evt_cb(System_Event_t *evt);
 
 void wifi_init() {
-    #define SSID_PREFIX "esp"
-    #define SSID_PASS "l0cK*It_Dwn"
-
-    #define FAIL(s, ...) { \
-        os_printf(s, ##__VA_ARGS__); \
-        while (1) os_delay_us(1000); \
-    }
-
     struct softap_config conf;
     char ssid[sizeof(conf.ssid)];
-    bool update;
 
     if (wifi_get_opmode() != STATIONAP_MODE) {
         if (!wifi_set_opmode(STATIONAP_MODE))
             FAIL("wifi_set_opmode() failed\n")
     }
 
-    update = false;
     if (!wifi_softap_get_config(&conf))
         FAIL("wifi_softap_get_config() failed\n")
-    else {
-        /* assert sizeof(SSID_PREFIX) + 10 < MIN(size(ssid), size(conf.ssid)) */
-        os_snprintf(ssid, sizeof(ssid),
-                    "%s-%08x", SSID_PREFIX, system_get_chip_id());
-        if (os_strncmp(ssid, (char *)conf.ssid, os_strlen(ssid)) != 0)
-            update = true;
-    }
 
-    if (update) {
+    /* assert sizeof(SSID_PREFIX) + 10 < MIN(size(ssid), size(conf.ssid)) */
+    os_snprintf(ssid, sizeof(ssid),
+                "%s-%08x", SSID_PREFIX, system_get_chip_id());
+    if (os_strncmp(ssid, (char *)conf.ssid, os_strlen(ssid)) != 0) {
         os_strncpy((char *)conf.ssid, ssid, os_strlen(ssid)+1);
         os_strncpy((char *)conf.password, SSID_PASS, os_strlen(SSID_PASS)+1);
         conf.ssid_len = 0;
@@ -50,7 +38,7 @@ void wifi_init() {
 
         conf.authmode = AUTH_WPA_WPA2_PSK;
         conf.ssid_hidden = 0;
-        conf.max_connection = 4;
+        conf.max_connection = MAX_CONN_INBOUND;
         conf.beacon_interval = 100;
 
         if (!wifi_softap_set_config(&conf))

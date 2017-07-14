@@ -1,7 +1,13 @@
+#include <ip_addr.h> /* Must be included before espconn.h */
+
 #include <esp_sdk_ver.h>
+#include <espconn.h>
 
 #include "drivers/uart.h"
 
+#include "httpd/httpd.h"
+#include "config.h"
+#include "utils.h"
 #include "wifi.h"
 
 #if ESP_SDK_VERSION < 020000
@@ -15,4 +21,10 @@ void user_init() {
     /* TODO UART_SetPrintPort(UART1); */
 
     wifi_init();
+
+    /* FIXME Increment as clients are written; eg for FOTA, NTP, MQTT, SMTP */
+    if (espconn_tcp_set_max_con(MAX_CONN_INBOUND))
+        FAIL("espconn_tcp_set_max_con() failed")
+
+    httpd_init();
 }
