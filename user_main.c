@@ -1,8 +1,12 @@
-#include <osapi.h>
-#include <user_interface.h>
+#include <esp_sdk_ver.h>
 
-#include "missing-decls.h"
 #include "drivers/uart.h"
+
+#include "wifi.h"
+
+#if ESP_SDK_VERSION < 020000
+    #error "ESP8266 SDK version >= 2.0.0 required"
+#endif
 
 void user_init() {
     /* Leave the bit rates unchanged but ensure UART1 is initialized */
@@ -10,7 +14,5 @@ void user_init() {
     /* Send os_printf() debug output to UART1 */
     /* TODO UART_SetPrintPort(UART1); */
 
-    os_printf("SDK version: %s\n", system_get_sdk_version());
-    system_print_meminfo();
-    os_printf("system_get_flash_size_map = %d\n", system_get_flash_size_map());
+    wifi_init();
 }

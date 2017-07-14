@@ -45,8 +45,9 @@ LDFLAGS = -EL -nostdlib -static --gc-sections
 SDKLIBS = --start-group -lc -lgcc -lhal -llwip -lmain -lnet80211 -lpp -lphy \
               -lwpa --end-group
 
-ESP_DATA_BIN = $(NONOS_SDK_PATH)/bin/esp_init_data_default.bin
+BOOT_BIN = $(NONOS_SDK_PATH)/bin/boot_v1.6.bin
 BLANK_BIN = $(NONOS_SDK_PATH)/bin/blank.bin
+ESP_DATA_BIN = $(NONOS_SDK_PATH)/bin/esp_init_data_default.bin
 
 eagle.app.flash.bin: app.elf
 	@echo GEN_APPBIN $<
@@ -70,12 +71,13 @@ eagle.app.flash.bin: app.elf
 	@rm eagle.app.v6.*.bin
 
 	@# Verify eagle.app.flash.bin (user app) is within size limits
-	@du -b eagle.app.flash.bin
 	@test `du -b eagle.app.flash.bin | awk '{print $$1}'` \
          -le $(MAX_APP_SIZE) || false
+	@du -b eagle.app.flash.bin | \
+         awk '{printf "%.2f KB, %.3f%%\n", $$1/1024, $$1/$(MAX_APP_SIZE)*100}'
 
 app.elf: $(OBJ)
-	@echo LD $@ ...
+	@echo LD $@
 	@$(LD) $(LDFLAGS) -L$(SDK_PATH)/usr/lib -L$(SDK_PATH)/lib \
              -L$(NONOS_SDK_PATH)/ld -Teagle.app.v6.new.1024.app1.ld \
              -o $@ $^ $(SDKLIBS)
@@ -91,10 +93,16 @@ clean:
 
 flash: eagle.app.flash.bin
 	@echo WRITE_FLASH app.elf-\*.bin
+
+	@# Verify the sizes of the bin files
+	@test `du -b $(BOOT_BIN) | awk '{print $$1}'` -le 4096 || false
+	@test `du -b $(BLANK_BIN) | awk '{print $$1}'` -le 4096 || false
+	@test `du -b $(ESP_DATA_BIN) | awk '{print $$1}'` -le 4096 || false
+
 	@$(ESPTOOL) -p $(PORT) write_flash \
              -ff 80m -fm qio -fs $(FLASH_SIZE_ESPTOOL) --verify \
-             0x00000 $(NONOS_SDK_PATH)/bin/boot_v1.6.bin \
+             0x00000 $(BOOT_BIN) \
              0x01000 eagle.app.flash.bin \
-             0x7e000 $(NONOS_SDK_PATH)/bin/blank.bin \
-             0xfc000 $(NONOS_SDK_PATH)/bin/esp_init_data_default.bin \
-             0xfe000 $(NONOS_SDK_PATH)/bin/blank.bin
+             0x7e000 $(BLANK_BIN) 0x7f000 $(BLANK_BIN) \
+             0xfc000 $(ESP_DATA_BIN) 0xfd000 $(BLANK_BIN) \
+             0xfe000 $(BLANK_BIN) 0xff000 $(BLANK_BIN)
