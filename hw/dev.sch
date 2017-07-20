@@ -33,7 +33,6 @@ LIBS:microchip_pic12mcu
 LIBS:ld33v
 LIBS:cp2104
 LIBS:esp-1
-LIBS:dev-cache
 EELAYER 27 0
 EELAYER END
 $Descr A4 11693 8268
@@ -302,16 +301,16 @@ Wire Wire Line
 $Comp
 L GND #PWR5
 U 1 1 5970CCD6
-P 4800 4550
-F 0 "#PWR5" H 4800 4550 30  0001 C CNN
-F 1 "GND" H 4800 4480 30  0001 C CNN
-F 2 "" H 4800 4550 60  0000 C CNN
-F 3 "" H 4800 4550 60  0000 C CNN
-	1    4800 4550
+P 4800 4950
+F 0 "#PWR5" H 4800 4950 30  0001 C CNN
+F 1 "GND" H 4800 4880 30  0001 C CNN
+F 2 "" H 4800 4950 60  0000 C CNN
+F 3 "" H 4800 4950 60  0000 C CNN
+	1    4800 4950
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4800 4350 4800 4550
+	4800 4350 4800 4950
 $Comp
 L 3V3 #PWR6
 U 1 1 5970CCE1
@@ -344,7 +343,7 @@ Connection ~ 7000 4050
 Wire Wire Line
 	6600 3900 6800 3900
 Wire Wire Line
-	6800 3750 6800 4200
+	6800 3750 6800 4350
 Wire Wire Line
 	6800 4200 6600 4200
 Connection ~ 6800 3900
@@ -357,4 +356,23 @@ Wire Wire Line
 Wire Wire Line
 	7000 2750 7000 2700
 Connection ~ 7300 2700
+$Comp
+L C C3
+U 1 1 5970DF74
+P 6800 4550
+F 0 "C3" H 6800 4650 40  0000 L CNN
+F 1 "10 uF" H 6806 4465 40  0000 L CNN
+F 2 "~" H 6838 4400 30  0000 C CNN
+F 3 "~" H 6800 4550 60  0000 C CNN
+	1    6800 4550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6800 4750 6800 4850
+Wire Wire Line
+	6800 4850 4800 4850
+Connection ~ 4800 4850
+Connection ~ 6800 4200
+Text Notes 6150 5050 0    60   ~ 0
+This cap is to smooth power\nripples and should be placed\nas close to the ESP as possible.
 $EndSCHEMATC
