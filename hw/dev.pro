@@ -1,4 +1,4 @@
-update=Wed 12 Jul 2017 08:40:36 AM EDT
+update=Thu 20 Jul 2017 11:19:42 AM EDT
 version=1
 last_client=eeschema
 [cvpcb]
@@ -85,6 +85,6 @@ LibName28=atmel
 LibName29=contrib
 LibName30=valves
 LibName31=microchip_pic12mcu
-LibName32=adafruit
-LibName33=ld33v
-LibName34=sparkfun
+LibName32=ld33v
+LibName33=cp2104
+LibName34=esp-1
