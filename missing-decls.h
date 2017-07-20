@@ -11,6 +11,8 @@ void ets_isr_attach(int, void *, void *);
 void ets_isr_mask(unsigned int);
 void ets_isr_unmask(unsigned int);
 
+void  *ets_memcpy(void *dest, const void *src, size_t n);
+
 int ets_sprintf(char *, const char *, ...);
 int ets_snprintf(char *, size_t, const char *, ...);
 

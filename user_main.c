@@ -15,7 +15,7 @@
 void user_init() {
     wifi_init();
 
-    /* FIXME Increment as clients are written; eg for FOTA, NTP, MQTT, SMTP */
+    /* TODO Increment as clients are written; eg for FOTA, NTP, MQTT, SMTP */
     if (espconn_tcp_set_max_con(MAX_CONN_INBOUND))
         FAIL("espconn_tcp_set_max_con() failed")
 

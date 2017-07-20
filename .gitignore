@@ -1,4 +1,7 @@
 eagle.app.*.bin
 app.elf
+
+uart0/uart0
+
 *.o
 *.d

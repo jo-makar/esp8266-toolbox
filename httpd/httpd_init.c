@@ -13,8 +13,11 @@ HttpdClient httpd_clients[MAX_CONN_INBOUND];
 static struct espconn httpd_conn;
 static esp_tcp httpd_tcp;
 
-static void httpd_conn_cb(void *arg);
-static void httpd_error_cb(void *arg, int8_t err);
+static void httpd_server_conn_cb(void *arg);
+static void httpd_server_error_cb(void *arg, int8_t err);
+
+static void httpd_client_disconn_cb(void *arg);
+static void httpd_client_recv_cb(void *arg, char *data, unsigned short len);
 
 static os_event_t httpd_task_queue[MAX_CONN_INBOUND];
 enum httpd_task_signal { HTTPD_DISCONN };
@@ -35,10 +38,10 @@ void httpd_init() {
 
     httpd_conn.proto.tcp = &httpd_tcp;
 
-    if (espconn_regist_connectcb(&httpd_conn, httpd_conn_cb))
+    if (espconn_regist_connectcb(&httpd_conn, httpd_server_conn_cb))
         FAIL("espconn_regist_connectcb() failed")
        
-    if (espconn_regist_reconcb(&httpd_conn, httpd_error_cb))
+    if (espconn_regist_reconcb(&httpd_conn, httpd_server_error_cb))
         FAIL("espconn_regist_reconcb() failed")
 
     if (espconn_accept(&httpd_conn))
@@ -55,12 +58,27 @@ void httpd_init() {
         FAIL("system_os_task() failed\n")
 }
 
-static void httpd_conn_cb(void *arg) {
+static void httpd_server_conn_cb(void *arg) {
     struct espconn *conn = arg;
     size_t i;
 
     os_printf("httpd: connect: " IPSTR ":%u\n",
               IP2STR(conn->proto.tcp->remote_ip), conn->proto.tcp->remote_port);
+
+    /* Indicate this connection has not been fully initialized */
+    conn->reverse = NULL;
+
+    if (!espconn_regist_disconcb(conn, httpd_client_disconn_cb)) {
+        os_printf("httpd: connect: espconn_regist_disconcb() failed\n");
+        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        return;
+    }
+
+    if (!espconn_regist_recvcb(conn, httpd_client_recv_cb)) {
+        os_printf("httpd: connect: espconn_regist_recvcb() failed\n");
+        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        return;
+    }
 
     for (i=0; i<sizeof(httpd_clients)/sizeof(*httpd_clients); i++)
         if (!httpd_clients[i].inuse)
@@ -68,22 +86,16 @@ static void httpd_conn_cb(void *arg) {
     if (i == sizeof(httpd_clients)/sizeof(*httpd_clients)) {
         os_printf("httpd: connect: too many clients\n");
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        return;
     }
 
     httpd_clients[i].inuse = 1;
+    httpd_clients[i].conn = conn;
     conn->reverse = &httpd_clients[i];
-
-    /* espconn_regist_disconcb */
-    /* FIXME STOPPED */
-    /* espconn_regist_sentcb - generic tcp/udp sent data callback */ 
-    /* OR espconn_regist_write_finish - tcp sent data callback */
-
-    /* espconn_regist_recvcb - generic tcp/udp recvd data callback */
 }
 
-static void httpd_error_cb(void *arg, int8_t err) {
+static void httpd_server_error_cb(void *arg, int8_t err) {
     struct espconn *conn = arg;
-    HttpdClient *client;
 
     switch (err) {
         case ESPCONN_TIMEOUT:
@@ -105,15 +117,55 @@ static void httpd_error_cb(void *arg, int8_t err) {
             os_printf("httpd: error: handshake ");
             break;
         default:
-            os_printf("httpd: error: unknown error (%02x) ");
+            os_printf("httpd: error: unknown (%02x) ");
             break;
     }
 
     os_printf(IPSTR ":%u\n", IP2STR(conn->proto.tcp->remote_ip),
               conn->proto.tcp->remote_port);
 
-    client = conn->reverse;
-    client->inuse = 0;
+    /*
+     * TODO How should this be handled?  Likely dependent on the error.
+     *      Can verify this is the server socket by checking conn->state.
+     */
+}
+
+static void httpd_client_disconn_cb(void *arg) {
+    struct espconn *conn = arg;
+    HttpdClient *client;
+
+    os_printf("httpd: disconnect: " IPSTR ":%u\n",
+              IP2STR(conn->proto.tcp->remote_ip), conn->proto.tcp->remote_port);
+
+    if ((client = conn->reverse) != NULL)
+        client->inuse = 0;
+}
+
+static void httpd_client_recv_cb(void *arg, char *data, unsigned short len) {
+    struct espconn *conn = arg;
+    HttpdClient *client;
+
+    os_printf("httpd: recv: " IPSTR ":%u len=%u\n",
+              IP2STR(conn->proto.tcp->remote_ip),
+              conn->proto.tcp->remote_port, len);
+
+    /* Should never happen */
+    if ((client = conn->reverse) == NULL) {
+        os_printf("httpd: recv: client not initialized\n");
+        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        return;
+    }
+
+    if (client->bufused + len > sizeof(client->bufused)) {
+        os_printf("httpd: recv: client buffer overflow\n");
+        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        return;
+    }
+
+    os_memcpy(client->buf + client->bufused, data, len);
+    client->bufused += len;
+
+    /* FIXME STOPPED Attempt to process */
 }
 
 static void httpd_task(os_event_t *evt) {
@@ -128,7 +180,7 @@ static void httpd_task(os_event_t *evt) {
                       conn->proto.tcp->remote_port);
 
             if (!espconn_disconnect(conn))
-                os_printf("espconn_disconnect() failed\n");
+                os_printf("httpd: task: espconn_disconnect() failed\n");
 
             break;
         }
