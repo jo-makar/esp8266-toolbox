@@ -1,7 +1,7 @@
 # Build an application with OTA upgrade support
 
-# Written against the Adafruit Huzzah ESP8266 breakout
-# available from https://www.adafruit.com/product/2471
+# Written against an ESP-1 board design
+# (for example http://www.sparkfun.com/products/13678)
 # and which has a flash of 8 Mbits (1 MB = 1024 KB)
 
 # NB Flash size can be determined from system_get_flash_size_map()
@@ -25,7 +25,7 @@ PORT ?= /dev/ttyUSB0
 
 #################################################################################
 
-SRC = $(wildcard *.c drivers/*.c httpd/*.c)
+SRC = $(wildcard *.c httpd/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 
