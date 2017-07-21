@@ -155,31 +155,9 @@ int httpd_process(HttpdClient *client) {
             client->state = HTTPD_STATE_POSTDATA;
     }
 
-    if (client->state == HTTPD_STATE_POSTDATA) {
-        size_t len;
+    if (client->state == HTTPD_STATE_POSTDATA ||
+            client->state == HTTPD_STATE_RESPONSE) {
 
-        if ((size_t)(client->postlen-client->postused) >
-                sizeof(client->post)-client->postused) {
-            HTTPD_WARNING("process: client post overflow\n")
-            return 1;
-        }
-
-        len = MIN(client->bufused, client->postlen - client->postused);
-
-        os_memcpy(client->post + client->postused, client->buf, len);
-        client->postused += len;
-
-        os_memmove(client->buf, client->buf + len, client->bufused - len);
-        client->bufused -= len;
-
-        if (client->postused == client->postlen) {
-            client->state = HTTPD_STATE_RESPONSE;
-            if (client->bufused > 0)
-                HTTPD_WARNING("process: extra bytes after post\n")
-        }
-    }
-
-    if (client->state == HTTPD_STATE_RESPONSE) {
         char baseurl[HTTPD_URL_LEN/2];
         char *beg=(char *)client->url, *end;
         size_t i;

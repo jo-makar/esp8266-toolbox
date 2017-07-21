@@ -20,6 +20,8 @@ uint16_t httpd_outbuflen;
 int httpd_url_404(HttpdClient *client) {
     (void)client;
 
+    HTTPD_IGNORE_POSTDATA
+
     HTTPD_OUTBUF_APPEND("HTTP/1.1 404 Not Found\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")
     HTTPD_OUTBUF_APPEND("Content-type: text/html\r\n")
@@ -32,6 +34,8 @@ int httpd_url_404(HttpdClient *client) {
 
 int httpd_url_blank(HttpdClient *client) {
     (void)client;
+
+    HTTPD_IGNORE_POSTDATA
 
     HTTPD_OUTBUF_APPEND("HTTP/1.1 200 OK\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")
