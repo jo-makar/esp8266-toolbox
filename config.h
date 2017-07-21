@@ -20,7 +20,6 @@
 #define LEVEL_CRITICAL 50
 
 #define LOG_LEVEL LEVEL_DEBUG
-/* FIXME Write CRITICAL, etc for generic use & remove utils.h */
 
 #define HTTPD_LOG_LEVEL LEVEL_INFO
 

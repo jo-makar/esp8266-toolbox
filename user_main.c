@@ -5,7 +5,7 @@
 
 #include "httpd/httpd.h"
 #include "config.h"
-#include "utils.h"
+#include "log.h"
 #include "wifi.h"
 
 #if ESP_SDK_VERSION < 020000
@@ -17,7 +17,7 @@ void user_init() {
 
     /* TODO Increment as clients are written; eg for FOTA, NTP, MQTT, SMTP */
     if (espconn_tcp_set_max_con(MAX_CONN_INBOUND))
-        FAIL("espconn_tcp_set_max_con() failed")
+        CRITICAL("espconn_tcp_set_max_con() failed\n")
 
     httpd_init();
 }

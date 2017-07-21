@@ -4,8 +4,8 @@
 #include <user_interface.h>
 
 #include "config.h"
+#include "log.h"
 #include "missing-decls.h"
-#include "utils.h"
 
 static void wifi_evt_cb(System_Event_t *evt);
 
@@ -15,11 +15,11 @@ void wifi_init() {
 
     if (wifi_get_opmode() != STATIONAP_MODE) {
         if (!wifi_set_opmode(STATIONAP_MODE))
-            FAIL("wifi_set_opmode() failed\n")
+            CRITICAL("wifi_set_opmode() failed\n")
     }
 
     if (!wifi_softap_get_config(&conf))
-        FAIL("wifi_softap_get_config() failed\n")
+        CRITICAL("wifi_softap_get_config() failed\n")
 
     /* assert sizeof(SSID_PREFIX) + 10 < MIN(size(ssid), size(conf.ssid)) */
     os_snprintf(ssid, sizeof(ssid),
@@ -42,7 +42,7 @@ void wifi_init() {
         conf.beacon_interval = 100;
 
         if (!wifi_softap_set_config(&conf))
-            FAIL("wifi_softap_set_config() failed\n")
+            CRITICAL("wifi_softap_set_config() failed\n")
     }
 
     wifi_set_event_handler_cb(wifi_evt_cb);
@@ -56,8 +56,8 @@ static void wifi_evt_cb(System_Event_t *evt) {
             Event_StaMode_Connected_t *info = &evt->event_info.connected;
             len = MIN(strnlen((char *)info->ssid, sizeof(info->ssid)),
                       info->ssid_len);
-            os_printf("wifi: station: connected ssid=%.*s channel=%d\n",
-                      len, info->ssid, info->channel);
+            DEBUG("station: connected ssid=%.*s channel=%d\n",
+                  len, info->ssid, info->channel)
             /* TODO uint8 bssid[6]? */
             break;
         }
@@ -66,56 +66,54 @@ static void wifi_evt_cb(System_Event_t *evt) {
             Event_StaMode_Disconnected_t *info = &evt->event_info.disconnected;
             len = MIN(strnlen((char *)info->ssid, sizeof(info->ssid)),
                       info->ssid_len);
-            os_printf("wifi: station: disconnected ssid=%.*s reason=0x%02x\n",
-                      len, info->ssid, info->reason);
+            DEBUG("station: disconnected ssid=%.*s reason=0x%02x\n",
+                  len, info->ssid, info->reason)
             /* TODO uint8 bssid[6]? */
             break;
         }
 
         case EVENT_STAMODE_AUTHMODE_CHANGE: {
             Event_StaMode_AuthMode_Change_t *info = &evt->event_info.auth_change;
-            os_printf("wifi: station: authmode_change old=0x%02x new=0x%02x\n",
-                      info->old_mode, info->new_mode);
+            DEBUG("station: authmode_change old=0x%02x new=0x%02x\n",
+                  info->old_mode, info->new_mode);
             break;
         }
 
         case EVENT_STAMODE_GOT_IP: {
             Event_StaMode_Got_IP_t *info = &evt->event_info.got_ip;
-            os_printf("wifi: station: got_ip "
-                      "ip=" IPSTR " mask=" IPSTR " gw=" IPSTR "\n",
-                      IP2STR(&info->ip), IP2STR(&info->mask), IP2STR(&info->gw));
+            DEBUG("station: got_ip ip=" IPSTR " mask=" IPSTR " gw=" IPSTR "\n",
+                  IP2STR(&info->ip), IP2STR(&info->mask), IP2STR(&info->gw))
             break;
         }
         
         case EVENT_SOFTAPMODE_STACONNECTED: {
             Event_SoftAPMode_StaConnected_t *info =
                 &evt->event_info.sta_connected;
-            os_printf("wifi: softap: staconnected mac=" MACSTR " aid=%02x\n",
-                      MAC2STR(info->mac), info->aid);
+            DEBUG("softap: staconnected mac=" MACSTR " aid=%02x\n",
+                  MAC2STR(info->mac), info->aid)
             break;
         }
 
         case EVENT_SOFTAPMODE_STADISCONNECTED: {
             Event_SoftAPMode_StaDisconnected_t *info =
                 &evt->event_info.sta_disconnected;
-            os_printf("wifi: softap: stadisconnected mac=" MACSTR " aid=%02x\n",
-                      MAC2STR(info->mac), info->aid);
+            DEBUG("softap: stadisconnected mac=" MACSTR " aid=%02x\n",
+                  MAC2STR(info->mac), info->aid)
             break;
         }
 
         case EVENT_SOFTAPMODE_PROBEREQRECVED: {
-            if (0) {
+            #if 0
                 Event_SoftAPMode_ProbeReqRecved_t *info =
                     &evt->event_info.ap_probereqrecved;
-                os_printf("wifi: softap: probereqrecved "
-                          "mac=" MACSTR " rssi=%d\n",
-                          MAC2STR(info->mac), info->rssi);
-            }
+                DEBUG("softap: probereqrecved mac=" MACSTR " rssi=%d\n",
+                      MAC2STR(info->mac), info->rssi)
+            #endif
             break;
         }
 
         default:
-            os_printf("wifi: unknown event (0x%04x)\n", evt->event);
+            DEBUG("unknown event (0x%04x)\n", evt->event)
             break;
     }
 }
