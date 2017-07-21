@@ -166,7 +166,7 @@ static void httpd_client_recv_cb(void *arg, char *data, unsigned short len) {
     os_memcpy(client->buf + client->bufused, data, len);
     client->bufused += len;
 
-    /* FIXME STOPPED Attempt to process */
+    httpd_process(client);
 }
 
 static void httpd_task(os_event_t *evt) {
