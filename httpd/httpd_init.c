@@ -68,13 +68,13 @@ static void httpd_server_conn_cb(void *arg) {
     /* Indicate this connection has not been fully initialized */
     conn->reverse = NULL;
 
-    if (!espconn_regist_disconcb(conn, httpd_client_disconn_cb)) {
+    if (espconn_regist_disconcb(conn, httpd_client_disconn_cb)) {
         os_printf("httpd: connect: espconn_regist_disconcb() failed\n");
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
         return;
     }
 
-    if (!espconn_regist_recvcb(conn, httpd_client_recv_cb)) {
+    if (espconn_regist_recvcb(conn, httpd_client_recv_cb)) {
         os_printf("httpd: connect: espconn_regist_recvcb() failed\n");
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
         return;
@@ -127,6 +127,7 @@ static void httpd_server_error_cb(void *arg, int8_t err) {
     /*
      * TODO How should this be handled?  Likely dependent on the error.
      *      Can verify this is the server socket by checking conn->state.
+     *      Unsure if a espconn_disconnect() is needed or just espconn_delete().
      */
 }
 
@@ -156,7 +157,7 @@ static void httpd_client_recv_cb(void *arg, char *data, unsigned short len) {
         return;
     }
 
-    if (client->bufused + len > sizeof(client->bufused)) {
+    if (client->bufused + len > sizeof(client->buf)) {
         os_printf("httpd: recv: client buffer overflow\n");
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
         return;
@@ -179,8 +180,10 @@ static void httpd_task(os_event_t *evt) {
                       IP2STR(conn->proto.tcp->remote_ip),
                       conn->proto.tcp->remote_port);
 
-            if (!espconn_disconnect(conn))
+            if (espconn_disconnect(conn))
                 os_printf("httpd: task: espconn_disconnect() failed\n");
+            if (espconn_delete(conn))
+                os_printf("httpd: task: espconn_delete() failed\n");
 
             break;
         }
