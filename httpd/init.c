@@ -89,8 +89,10 @@ static void httpd_server_conn_cb(void *arg) {
         return;
     }
 
+    os_bzero(httpd_clients + i, sizeof(*httpd_clients));
     httpd_clients[i].inuse = 1;
     httpd_clients[i].conn = conn;
+
     conn->reverse = &httpd_clients[i];
 }
 
@@ -166,7 +168,8 @@ static void httpd_client_recv_cb(void *arg, char *data, unsigned short len) {
     os_memcpy(client->buf + client->bufused, data, len);
     client->bufused += len;
 
-    httpd_process(client);
+    if (httpd_process(client))
+        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
 }
 
 static void httpd_task(os_event_t *evt) {

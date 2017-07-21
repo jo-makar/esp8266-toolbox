@@ -1,10 +1,10 @@
 #include <sys/param.h>
 #include <osapi.h>
+#include <string.h>
 #include <user_interface.h>
 
 #include "config.h"
 #include "missing-decls.h"
-#include "string.h"
 #include "utils.h"
 
 static void wifi_evt_cb(System_Event_t *evt);
