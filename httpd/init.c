@@ -70,13 +70,15 @@ static void httpd_server_conn_cb(void *arg) {
 
     if (espconn_regist_disconcb(conn, httpd_client_disconn_cb)) {
         HTTPD_ERROR("connect: espconn_regist_disconcb() failed\n")
-        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
+            HTTPD_ERROR("connect: system_os_post() failed\n")
         return;
     }
 
     if (espconn_regist_recvcb(conn, httpd_client_recv_cb)) {
         HTTPD_ERROR("connect: espconn_regist_recvcb() failed\n")
-        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
+            HTTPD_ERROR("connect: system_os_post() failed\n")
         return;
     }
 
@@ -85,7 +87,8 @@ static void httpd_server_conn_cb(void *arg) {
             break;
     if (i == sizeof(httpd_clients)/sizeof(*httpd_clients)) {
         HTTPD_WARNING("connect: too many clients\n")
-        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
+            HTTPD_ERROR("connect: system_os_post() failed\n")
         return;
     }
 
@@ -160,21 +163,25 @@ static void httpd_client_recv_cb(void *arg, char *data, unsigned short len) {
     /* Should never happen */
     if ((client = conn->reverse) == NULL) {
         HTTPD_ERROR("recv: client not initialized\n")
-        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
+            HTTPD_ERROR("recv: system_os_post() failed\n")
         return;
     }
 
     if (client->bufused + len > sizeof(client->buf)) {
         HTTPD_WARNING("recv: client buffer overflow\n")
-        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+        if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
+            HTTPD_ERROR("recv: system_os_post() failed\n")
         return;
     }
 
     os_memcpy(client->buf + client->bufused, data, len);
     client->bufused += len;
 
-    if (httpd_process(client))
-        system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
+    if (httpd_process(client)) {
+        if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
+            HTTPD_ERROR("recv: system_os_post() failed\n")
+    }
 }
 
 static void httpd_task(os_event_t *evt) {

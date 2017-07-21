@@ -1,5 +1,17 @@
 # esp8266-toolbox
-Motley of servers and clients written for the ESP8266
+Motley of servers and clients for the ESP8266 with signed OTA updates
+
+# Completed
+- HTTP server framework
+ - Multiple simultaneous clients
+ - GET and POST methods
+
+# Forthcoming
+- Signed OTA updates
+ - Triggered by HTTP POST and scheduled checks
+- Misc. sensor drivers
+- MQTT client framework
+- SMTP client framework
 
 # Hardware
 A development schematic is shown below, note that any version of the ESP8266 may

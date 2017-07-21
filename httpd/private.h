@@ -36,27 +36,56 @@ typedef struct {
 
     struct espconn *conn;
 
-    #define STATE_HEADERS 0
-    #define STATE_POSTDATA 1
-    #define STATE_RESPONSE 2
+    #define HTTPD_STATE_HEADERS 0
+    #define HTTPD_STATE_POSTDATA 1
+    #define HTTPD_STATE_RESPONSE 2
     uint8_t state;
 
-    #define METHOD_GET 0
-    #define METHOD_POST 1
+    #define HTTPD_METHOD_GET 0
+    #define HTTPD_METHOD_POST 1
     uint8_t method;
 
-    uint8_t url[256];
+    #define HTTPD_URL_LEN 256
+    uint8_t url[HTTPD_URL_LEN];
     uint8_t host[64];
 
     uint8_t buf[1024];
-    uint8_t bufused;
+    uint16_t bufused;
 
     uint8_t post[1024];
+    uint16_t postused;
     uint16_t postlen;
 } HttpdClient;
 
 extern HttpdClient httpd_clients[MAX_CONN_INBOUND];
 
 int httpd_process(HttpdClient *client);
+
+typedef struct {
+    uint8_t baseurl[HTTPD_URL_LEN/2];
+    int (*handler)(HttpdClient *);
+} HttpdUrl;
+
+extern const HttpdUrl httpd_urls[];
+extern const size_t httpd_urlcount;
+
+int httpd_url_404(HttpdClient *client);
+
+#define HTTPD_OUTBUF_MAXLEN 1024
+uint8_t httpd_outbuf[HTTPD_OUTBUF_MAXLEN];
+uint16_t httpd_outbuflen;
+
+#define HTTPD_OUTBUF_APPEND(src) { \
+    size_t srclen; \
+    \
+    if ((srclen = os_strlen(src)) >= sizeof(httpd_outbuf)-httpd_outbuflen) { \
+        HTTPD_ERROR("urls: outbuf overflow\n") \
+        return 1; \
+    } \
+    \
+    /* Copy srclen+1 for the terminating null byte */ \
+    os_strncpy((char *)httpd_outbuf+httpd_outbuflen, src, srclen+1); \
+    httpd_outbuflen += srclen; \
+}
 
 #endif

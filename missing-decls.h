@@ -1,7 +1,7 @@
 #ifndef MISSING_DECLS_H
 #define MISSING_DECLS_H
 
-void ets_bzero(void *s, size_t n);
+void ets_bzero(void *, size_t);
 
 void ets_delay_us(uint16);
 
@@ -11,15 +11,17 @@ void ets_isr_attach(int, void *, void *);
 void ets_isr_mask(unsigned int);
 void ets_isr_unmask(unsigned int);
 
-void *ets_memcpy(void *dest, const void *src, size_t n);
-void *ets_memmove(void *dest, const void *src, size_t n);
+void *ets_memcpy(void *, const void *, size_t);
+void *ets_memmove(void *, const void *, size_t);
 
 int ets_sprintf(char *, const char *, ...);
 int ets_snprintf(char *, size_t, const char *, ...);
 
 size_t ets_strlen(const char *);
 
+int ets_strcmp(const char *, const char *);
 int ets_strncmp(const char *, const char *, size_t);
+
 char *ets_strncpy(char *, const char *, size_t n);
 
 int ets_uart_printf(const char *, ...);

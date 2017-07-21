@@ -28,7 +28,7 @@ uint8_t *parseline(const uint8_t *buf, size_t len);
 uint8_t *parsetoken(const uint8_t *buf, size_t len, uint8_t **end);
 
 int httpd_process(HttpdClient *client) {
-    if (client->state == STATE_HEADERS) {
+    if (client->state == HTTPD_STATE_HEADERS) {
         uint8_t *buf = client->buf;
         int len = client->bufused;
 
@@ -49,9 +49,9 @@ int httpd_process(HttpdClient *client) {
         }
 
         if (os_strncmp((char *)token, "GET", MIN(nexttoken-token, 3)) == 0)
-            client->method = METHOD_GET;
+            client->method = HTTPD_METHOD_GET;
         else if (os_strncmp((char *)token, "POST", MIN(nexttoken-token, 4)) == 0)
-            client->method = METHOD_POST;
+            client->method = HTTPD_METHOD_POST;
         else {
             nexttoken = 0;
             HTTPD_WARNING("process: unsupported method: %s\n", token)
@@ -139,26 +139,80 @@ int httpd_process(HttpdClient *client) {
                       IP2STR(client->conn->proto.tcp->remote_ip),
                       client->conn->proto.tcp->remote_port);
 
-            if (client->method == METHOD_GET)
+            if (client->method == HTTPD_METHOD_GET)
                 os_printf("get ");
-            else /* if METHOD_POST */
+            else /* if HTTPD_METHOD_POST */
                 os_printf("post len=%u", client->postlen);
 
             os_printf("url=%s\n", client->url);
         #endif
 
-        if (client->method == METHOD_GET)
-            client->state = STATE_RESPONSE;
-        else /* if METHOD_POST */
-            client->state = STATE_POSTDATA;
+        if (client->method == HTTPD_METHOD_GET) {
+            client->state = HTTPD_STATE_RESPONSE;
+            if (client->bufused > 0)
+                HTTPD_WARNING("process: extra bytes after get\n")
+        } else /* if HTTPD_METHOD_POST */
+            client->state = HTTPD_STATE_POSTDATA;
     }
 
-    if (client->state == STATE_POSTDATA) {
-        /* FIXME STOPPED */
+    if (client->state == HTTPD_STATE_POSTDATA) {
+        size_t len;
+
+        if ((size_t)(client->postlen-client->postused) >
+                sizeof(client->post)-client->postused) {
+            HTTPD_WARNING("process: client post overflow\n")
+            return 1;
+        }
+
+        len = MIN(client->bufused, client->postlen - client->postused);
+
+        os_memcpy(client->post + client->postused, client->buf, len);
+        client->postused += len;
+
+        os_memmove(client->buf, client->buf + len, client->bufused - len);
+        client->bufused -= len;
+
+        if (client->postused == client->postlen) {
+            client->state = HTTPD_STATE_RESPONSE;
+            if (client->bufused > 0)
+                HTTPD_WARNING("process: extra bytes after post\n")
+        }
     }
 
-    if (client->state == STATE_RESPONSE) {
-        /* FIXME STOPPED */
+    if (client->state == HTTPD_STATE_RESPONSE) {
+        char baseurl[HTTPD_URL_LEN/2];
+        char *beg=(char *)client->url, *end;
+        size_t i;
+
+        if ((end = index(beg, '?')) == NULL)
+            end = beg + os_strlen(beg);
+
+        if ((size_t)(end-beg) > sizeof(baseurl)) {
+            HTTPD_WARNING("process: baseurl overflow\n")
+            return 1;
+        }
+
+        os_strncpy(baseurl, beg, end-beg);
+        baseurl[end-beg] = 0;
+
+        os_bzero(httpd_outbuf, sizeof(httpd_outbuf));
+        httpd_outbuflen = 0;
+        
+        for (i=0; i<httpd_urlcount; i++)
+            if (os_strcmp((char *)httpd_urls[i].baseurl, baseurl) == 0) {
+                if (!httpd_urls[i].handler(client)) {
+                    if (espconn_send(client->conn,
+                                     httpd_outbuf, httpd_outbuflen))
+                        HTTPD_ERROR("process: espconn_send() failed\n")
+                }
+                return 1;
+            }
+
+        if (!httpd_url_404(client)) {
+            if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
+                HTTPD_ERROR("process: espconn_send() failed\n")
+        }
+        return 1;
     }
 
     return 0;
