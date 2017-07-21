@@ -6,7 +6,6 @@
 #include "config.h"
 #include "httpd.h"
 #include "missing-decls.h"
-#include "utils.h"
 
 HttpdClient httpd_clients[MAX_CONN_INBOUND];
 
@@ -39,43 +38,44 @@ void httpd_init() {
     httpd_conn.proto.tcp = &httpd_tcp;
 
     if (espconn_regist_connectcb(&httpd_conn, httpd_server_conn_cb))
-        FAIL("espconn_regist_connectcb() failed")
+        HTTPD_CRITICAL("espconn_regist_connectcb() failed")
        
     if (espconn_regist_reconcb(&httpd_conn, httpd_server_error_cb))
-        FAIL("espconn_regist_reconcb() failed")
+        HTTPD_CRITICAL("espconn_regist_reconcb() failed")
 
     if (espconn_accept(&httpd_conn))
-        FAIL("espconn_accept() failed")
+        HTTPD_CRITICAL("espconn_accept() failed")
 
     /* TODO Are the defaults for espconn_regist_time(), espconn_set_opt()
             and espconn_set_keepalive() acceptable? */
 
     if (espconn_tcp_set_max_con_allow(&httpd_conn, MAX_CONN_INBOUND))
-        FAIL("espconn_tcp_set_max_con_allow() failed\n")
+        HTTPD_CRITICAL("espconn_tcp_set_max_con_allow() failed\n")
 
     if (!system_os_task(httpd_task, HTTPD_TASK_PRIO, httpd_task_queue,
                         sizeof(httpd_task_queue)/sizeof(*httpd_task_queue)))
-        FAIL("system_os_task() failed\n")
+        HTTPD_CRITICAL("system_os_task() failed\n")
 }
 
 static void httpd_server_conn_cb(void *arg) {
     struct espconn *conn = arg;
     size_t i;
 
-    os_printf("httpd: connect: " IPSTR ":%u\n",
-              IP2STR(conn->proto.tcp->remote_ip), conn->proto.tcp->remote_port);
+    HTTPD_DEBUG("connect: " IPSTR ":%u\n",
+                IP2STR(conn->proto.tcp->remote_ip),
+                conn->proto.tcp->remote_port)
 
     /* Indicate this connection has not been fully initialized */
     conn->reverse = NULL;
 
     if (espconn_regist_disconcb(conn, httpd_client_disconn_cb)) {
-        os_printf("httpd: connect: espconn_regist_disconcb() failed\n");
+        HTTPD_ERROR("connect: espconn_regist_disconcb() failed\n")
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
         return;
     }
 
     if (espconn_regist_recvcb(conn, httpd_client_recv_cb)) {
-        os_printf("httpd: connect: espconn_regist_recvcb() failed\n");
+        HTTPD_ERROR("connect: espconn_regist_recvcb() failed\n")
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
         return;
     }
@@ -84,7 +84,7 @@ static void httpd_server_conn_cb(void *arg) {
         if (!httpd_clients[i].inuse)
             break;
     if (i == sizeof(httpd_clients)/sizeof(*httpd_clients)) {
-        os_printf("httpd: connect: too many clients\n");
+        HTTPD_WARNING("connect: too many clients\n")
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
         return;
     }
@@ -99,32 +99,36 @@ static void httpd_server_conn_cb(void *arg) {
 static void httpd_server_error_cb(void *arg, int8_t err) {
     struct espconn *conn = arg;
 
-    switch (err) {
-        case ESPCONN_TIMEOUT:
-            os_printf("httpd: error: timeout ");
-            break;
-        case ESPCONN_ABRT:
-            os_printf("httpd: error: abrt ");
-            break;
-        case ESPCONN_RST:
-            os_printf("httpd: error: rst ");
-            break;
-        case ESPCONN_CLSD:
-            os_printf("httpd: error: clsd ");
-            break;
-        case ESPCONN_CONN:
-            os_printf("httpd: error: conn ");
-            break;
-        case ESPCONN_HANDSHAKE:
-            os_printf("httpd: error: handshake ");
-            break;
-        default:
-            os_printf("httpd: error: unknown (%02x) ");
-            break;
-    }
+    #if HTTPD_LOG_LEVEL <= LEVEL_ERROR
+        os_printf("error: %s:%d: ", __FILE__, __LINE__);
 
-    os_printf(IPSTR ":%u\n", IP2STR(conn->proto.tcp->remote_ip),
-              conn->proto.tcp->remote_port);
+        switch (err) {
+            case ESPCONN_TIMEOUT:
+                os_printf("error: timeout ");
+                break;
+            case ESPCONN_ABRT:
+                os_printf("error: abrt ");
+                break;
+            case ESPCONN_RST:
+                os_printf("error: rst ");
+                break;
+            case ESPCONN_CLSD:
+                os_printf("error: clsd ");
+                break;
+            case ESPCONN_CONN:
+                os_printf("error: conn ");
+                break;
+            case ESPCONN_HANDSHAKE:
+                os_printf("error: handshake ");
+                break;
+            default:
+                os_printf("error: unknown (%02x) ");
+                break;
+        }
+
+        os_printf(IPSTR ":%u\n", IP2STR(conn->proto.tcp->remote_ip),
+                conn->proto.tcp->remote_port);
+    #endif
 
     /*
      * TODO How should this be handled?  Likely dependent on the error.
@@ -137,8 +141,9 @@ static void httpd_client_disconn_cb(void *arg) {
     struct espconn *conn = arg;
     HttpdClient *client;
 
-    os_printf("httpd: disconnect: " IPSTR ":%u\n",
-              IP2STR(conn->proto.tcp->remote_ip), conn->proto.tcp->remote_port);
+    HTTPD_DEBUG("disconnect: " IPSTR ":%u\n",
+                IP2STR(conn->proto.tcp->remote_ip),
+                conn->proto.tcp->remote_port)
 
     if ((client = conn->reverse) != NULL)
         client->inuse = 0;
@@ -148,19 +153,19 @@ static void httpd_client_recv_cb(void *arg, char *data, unsigned short len) {
     struct espconn *conn = arg;
     HttpdClient *client;
 
-    os_printf("httpd: recv: " IPSTR ":%u len=%u\n",
-              IP2STR(conn->proto.tcp->remote_ip),
-              conn->proto.tcp->remote_port, len);
+    HTTPD_DEBUG("recv: " IPSTR ":%u len=%u\n",
+                IP2STR(conn->proto.tcp->remote_ip),
+                conn->proto.tcp->remote_port, len)
 
     /* Should never happen */
     if ((client = conn->reverse) == NULL) {
-        os_printf("httpd: recv: client not initialized\n");
+        HTTPD_ERROR("recv: client not initialized\n")
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
         return;
     }
 
     if (client->bufused + len > sizeof(client->buf)) {
-        os_printf("httpd: recv: client buffer overflow\n");
+        HTTPD_WARNING("recv: client buffer overflow\n")
         system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn);
         return;
     }
@@ -179,20 +184,20 @@ static void httpd_task(os_event_t *evt) {
         case HTTPD_DISCONN: {
             conn = (struct espconn *)evt->par;
 
-            os_printf("httpd: task: disconnect " IPSTR ":%u\n",
-                      IP2STR(conn->proto.tcp->remote_ip),
-                      conn->proto.tcp->remote_port);
+            HTTPD_DEBUG("task: disconnect " IPSTR ":%u\n",
+                        IP2STR(conn->proto.tcp->remote_ip),
+                        conn->proto.tcp->remote_port)
 
             if (espconn_disconnect(conn))
-                os_printf("httpd: task: espconn_disconnect() failed\n");
+                HTTPD_ERROR("task: espconn_disconnect() failed\n")
             if (espconn_delete(conn))
-                os_printf("httpd: task: espconn_delete() failed\n");
+                HTTPD_ERROR("task: espconn_delete() failed\n")
 
             break;
         }
 
         default:
-            os_printf("httpd: task: unknown signal (%04x)\n", evt->sig);
+            HTTPD_ERROR("task: unknown signal (%04x)\n", evt->sig)
             break;
     }
 }

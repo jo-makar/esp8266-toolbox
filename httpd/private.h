@@ -5,6 +5,32 @@
 
 #include "../config.h"
 
+#define HTTPD_CRITICAL(s, ...) { \
+    if (HTTPD_LOG_LEVEL <= LEVEL_CRITICAL) \
+        os_printf("critical: %s:%d: " s, __FILE__, __LINE__, ##__VA_ARGS__); \
+    while (1) os_delay_us(1000); \
+}
+
+#define HTTPD_ERROR(s, ...) { \
+    if (HTTPD_LOG_LEVEL <= LEVEL_ERROR) \
+        os_printf("error: %s:%d: " s, __FILE__, __LINE__, ##__VA_ARGS__); \
+}
+
+#define HTTPD_WARNING(s, ...) { \
+    if (HTTPD_LOG_LEVEL <= LEVEL_WARNING) \
+        os_printf("warning: %s:%d: " s, __FILE__, __LINE__, ##__VA_ARGS__); \
+}
+
+#define HTTPD_INFO(s, ...) { \
+    if (HTTPD_LOG_LEVEL <= LEVEL_INFO) \
+        os_printf("info: %s:%d: " s, __FILE__, __LINE__, ##__VA_ARGS__); \
+}
+
+#define HTTPD_DEBUG(s, ...) { \
+    if (HTTPD_LOG_LEVEL <= LEVEL_DEBUG) \
+        os_printf("debug: %s:%d: " s, __FILE__, __LINE__, ##__VA_ARGS__); \
+}
+
 typedef struct {
     uint8_t inuse;
 

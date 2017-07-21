@@ -1,7 +1,11 @@
+#include <ip_addr.h> /* Must be included before espconn.h */
+
 #include <sys/param.h>
+#include <espconn.h>
 #include <osapi.h>
 #include <stdlib.h>
 
+#include "config.h"
 #include "httpd.h"
 #include "missing-decls.h"
 
@@ -40,7 +44,7 @@ int httpd_process(HttpdClient *client) {
             return 0;
 
         if ((token = parsetoken(buf, nextline-buf, &nexttoken)) == NULL) {
-            os_printf("httpd: process: incomplete request line\n");
+            HTTPD_WARNING("process: incomplete request line\n")
             return 1;
         }
 
@@ -50,18 +54,18 @@ int httpd_process(HttpdClient *client) {
             client->method = METHOD_POST;
         else {
             nexttoken = 0;
-            os_printf("httpd: process: unsupported method: %s\n", token);
+            HTTPD_WARNING("process: unsupported method: %s\n", token)
             return 1;
         }
 
         if ((token = parsetoken(nexttoken,
                                 nextline-nexttoken, &nexttoken)) == NULL) {
-            os_printf("httpd: process: incomplete request line\n");
+            HTTPD_WARNING("process: incomplete request line\n")
             return 1;
         }
 
         if ((size_t)(nexttoken-token) > sizeof(client->url)) {
-            os_printf("httpd: process: client url overflow\n");
+            HTTPD_WARNING("process: client url overflow\n")
             return 1;
         }
 
@@ -89,7 +93,7 @@ int httpd_process(HttpdClient *client) {
                 return 0;
 
             if ((token = parsetoken(buf, nextline-buf, &nexttoken)) == NULL) {
-                os_printf("httpd: process: bad header line\n");
+                HTTPD_WARNING("process: bad header line\n")
                 return 1;
             }
 
@@ -97,12 +101,12 @@ int httpd_process(HttpdClient *client) {
                            MIN(nexttoken-token, 5)) == 0) {
                 if ((token = parsetoken(nexttoken, nextline-nexttoken,
                                         &nexttoken)) == NULL) {
-                    os_printf("httpd: process: incomplete host header line\n");
+                    HTTPD_WARNING("process: incomplete host header line\n")
                     return 1;
                 }
 
                 if ((size_t)(nexttoken-token) > sizeof(client->host)) {
-                    os_printf("httpd: process: client host overflow\n");
+                    HTTPD_WARNING("process: client host overflow\n")
                     return 1;
                 }
 
@@ -114,7 +118,7 @@ int httpd_process(HttpdClient *client) {
                                   MIN(nexttoken-token, 15)) == 0) {
                 if ((token = parsetoken(nexttoken, nextline-nexttoken,
                                         &nexttoken)) == NULL) {
-                    os_printf("httpd: process: incomplete cl header line\n");
+                    HTTPD_WARNING("process: incomplete cl header line\n")
                     return 1;
                 }
 
@@ -129,8 +133,11 @@ int httpd_process(HttpdClient *client) {
         os_memmove(client->buf, buf, client->bufused - (buf-client->buf));
         client->bufused -= buf-client->buf;
 
-        #if 1
-            os_printf("httpd: process: ");
+        #if HTTPD_LOG_LEVEL <= LEVEL_INFO
+            os_printf("info: %s:%u: ", __FILE__, __LINE__);
+            os_printf("process: " IPSTR ":%u ",
+                      IP2STR(client->conn->proto.tcp->remote_ip),
+                      client->conn->proto.tcp->remote_port);
 
             if (client->method == METHOD_GET)
                 os_printf("get ");
