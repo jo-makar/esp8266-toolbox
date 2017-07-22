@@ -1,4 +1,7 @@
+#include <ip_addr.h> /* Must be included before espconn.h */
+
 #include <c_types.h>
+#include <espconn.h>
 #include <mem.h>
 #include <upgrade.h>
 
@@ -32,15 +35,30 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
             goto fail;
     }
 
-    newaddr = curaddr == 4*1024 ? (size_kb/2+4)*1024 : 4*1024;
+    #define USER1_ADDR 4*1024
+    #define USER2_ADDR (size_kb/2+4)*1024
+    newaddr = curaddr == USER1_ADDR ? USER2_ADDR : USER1_ADDR;
 
-    if ((buf = os_malloc(4*1024)) == NULL) {
+    #define SECTOR_LEN 4*1024
+    if ((buf = os_malloc(SECTOR_LEN)) == NULL) {
         HTTPD_ERROR("url_fota: os_malloc failed\n")
+        goto fail;
+    }
+
+    if (client->state != HTTPD_STATE_POSTDATA) {
+        HTTPD_ERROR("url_fota: no post data\n")
+        goto fail;
+    }
+
+    if (client->postlen > (size_kb/2-20) * 1024) {
+        HTTPD_ERROR("url_fota: max app size exceeded\n")
         goto fail;
     }
 
     HTTPD_IGNORE_POSTDATA
     /* FIXME STOPPED Read and process the post data in 4KB chunks */
+    /* FIXME Must use espconn_recv_hold, unhold to block sender here */
+    /* FIXME Also kick the watchdog each iteration? */
 
     HTTPD_OUTBUF_APPEND("HTTP/1.1 202 Accepted\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")
@@ -49,7 +67,10 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("\r\n")
     HTTPD_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>")
 
-    return 0;
+    if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
+        HTTPD_ERROR("url_fota: espconn_send() failed\n")
+
+    return 1;
 
     fail:
 
@@ -63,5 +84,8 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("\r\n")
     HTTPD_OUTBUF_APPEND("<html><body><h1>400 Bad Request</h1></body></html>")
 
-    return 0;
+    if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
+        HTTPD_ERROR("url_fota: espconn_send() failed\n")
+
+    return 1;
 }

@@ -55,9 +55,8 @@ typedef struct {
     uint8_t buf[1024];
     uint16_t bufused;
 
-    uint8_t post[1024];
-    uint16_t postused;
-    uint16_t postlen;
+    uint32_t postused;
+    uint32_t postlen;
 } HttpdClient;
 
 extern HttpdClient httpd_clients[HTTPD_MAX_CONN];
@@ -73,30 +72,6 @@ extern const size_t httpd_urlcount;
 #define HTTPD_OUTBUF_MAXLEN 1024
 uint8_t httpd_outbuf[HTTPD_OUTBUF_MAXLEN];
 uint16_t httpd_outbuflen;
-
-#define HTTPD_STORE_POSTDATA { \
-    size_t len; \
-    \
-    if ((size_t)(client->postlen-client->postused) > \
-            sizeof(client->post)-client->postused) { \
-        HTTPD_WARNING("urls: client post overflow\n") \
-        return 1; \
-    } \
-    \
-    len = MIN(client->bufused, client->postlen - client->postused); \
-    \
-    os_memcpy(client->post + client->postused, client->buf, len); \
-    client->postused += len; \
-    \
-    os_memmove(client->buf, client->buf + len, client->bufused - len); \
-    client->bufused -= len; \
-    \
-    if (client->postused == client->postlen) { \
-        client->state = HTTPD_STATE_RESPONSE; \
-        if (client->bufused > 0) \
-            HTTPD_WARNING("urls: extra bytes after post\n") \
-    } \
-}
 
 #define HTTPD_IGNORE_POSTDATA { \
     if (client->state == HTTPD_STATE_POSTDATA) { \
@@ -122,7 +97,7 @@ uint16_t httpd_outbuflen;
     \
     if ((srclen = os_strlen(src)) >= sizeof(httpd_outbuf)-httpd_outbuflen) { \
         HTTPD_ERROR("urls: outbuf overflow\n") \
-        return 1; \
+        return 0; \
     } \
     \
     /* Copy srclen+1 for the terminating null byte */ \

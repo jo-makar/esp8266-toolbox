@@ -112,7 +112,7 @@ clean:
 	@rm -f eagle.app.*.bin app.elf $(OBJ) $(DEP)
 
 flash: eagle.app.flash.bin
-	@echo WRITE_FLASH app.elf-\*.bin
+	@echo WRITE_FLASH
 
 	@# Verify the sizes of the bin files
 	@test `du -b $(BOOT_BIN) | awk '{print $$1}'` -le 4096 || false
@@ -130,3 +130,7 @@ flash: eagle.app.flash.bin
              $(BLANK_ADDR3) $(BLANK_BIN) \
              $(BLANK_ADDR4) $(BLANK_BIN) \
              $(BLANK_ADDR5) $(BLANK_BIN)
+
+fota: eagle.app.flash.bin
+	@echo HTTP_UPDATE
+	@curl --data-binary @$< http://192.168.4.1/fota

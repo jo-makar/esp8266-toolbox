@@ -142,7 +142,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
             if (client->method == HTTPD_METHOD_GET)
                 os_printf("get ");
             else /* if HTTPD_METHOD_POST */
-                os_printf("post len=%u", client->postlen);
+                os_printf("post len=%u ", client->postlen);
 
             os_printf("url=%s\n", client->url);
         #endif
@@ -175,22 +175,12 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
 
         os_bzero(httpd_outbuf, sizeof(httpd_outbuf));
         httpd_outbuflen = 0;
-        
-        for (i=0; i<httpd_urlcount; i++)
-            if (os_strcmp((char *)httpd_urls[i].baseurl, baseurl) == 0) {
-                if (!httpd_urls[i].handler(client)) {
-                    if (espconn_send(client->conn,
-                                     httpd_outbuf, httpd_outbuflen))
-                        HTTPD_ERROR("process: espconn_send() failed\n")
-                }
-                return 1;
-            }
 
-        if (!httpd_url_404(client)) {
-            if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-                HTTPD_ERROR("process: espconn_send() failed\n")
-        }
-        return 1;
+        for (i=0; i<httpd_urlcount; i++)
+            if (os_strcmp((char *)httpd_urls[i].baseurl, baseurl) == 0)
+                return httpd_urls[i].handler(client);
+
+        return httpd_url_404(client);
     }
 
     return 0;
