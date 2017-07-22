@@ -13,12 +13,6 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - MQTT client framework
 - SMTP client framework
 
-# Hardware
-A development schematic is shown below, note that any version of the ESP8266 may
-be used though the flash size will need to be adjusted in the Makefile.
-
-![schematic](/hw/dev.png?raw=true)
-
 # Installation (Linux)
 1. Install the ESP8266 toolchain and SDK if not already installed:
    https://github.com/pfalcon/esp-open-sdk
