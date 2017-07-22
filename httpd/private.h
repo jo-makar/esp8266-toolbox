@@ -52,7 +52,7 @@ typedef struct {
     uint8_t url[HTTPD_URL_LEN];
     uint8_t host[64];
 
-    uint8_t buf[1024];
+    uint8_t buf[2048];
     uint16_t bufused;
 
     uint32_t postused;

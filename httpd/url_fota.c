@@ -2,7 +2,6 @@
 
 #include <c_types.h>
 #include <espconn.h>
-#include <mem.h>
 #include <upgrade.h>
 
 #include "httpd.h"
@@ -10,7 +9,6 @@
 ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     uint32_t size_kb;
     uint32_t curaddr, newaddr;
-    uint8_t *buf = NULL;
 
     switch (system_get_flash_size_map()) {
         case FLASH_SIZE_4M_MAP_256_256: size_kb = 4*1024 / 8; break;
@@ -39,12 +37,6 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     #define USER2_ADDR (size_kb/2+4)*1024
     newaddr = curaddr == USER1_ADDR ? USER2_ADDR : USER1_ADDR;
 
-    #define SECTOR_LEN 4*1024
-    if ((buf = os_malloc(SECTOR_LEN)) == NULL) {
-        HTTPD_ERROR("url_fota: os_malloc failed\n")
-        goto fail;
-    }
-
     if (client->state != HTTPD_STATE_POSTDATA) {
         HTTPD_ERROR("url_fota: no post data\n")
         goto fail;
@@ -55,10 +47,54 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
         goto fail;
     }
 
-    HTTPD_IGNORE_POSTDATA
-    /* FIXME STOPPED Read and process the post data in 4KB chunks */
-    /* FIXME Must use espconn_recv_hold, unhold to block sender here */
-    /* FIXME Also kick the watchdog each iteration? */
+    /*
+     * Process the POST data in chunks
+     * (as received from httpd_client_recv_cb)
+     */
+
+    {
+        #define SECTOR_LEN 4*1024
+        static uint8_t secbuf[SECTOR_LEN];
+        static uint16_t secused = 0;
+
+        size_t len;
+
+        if (espconn_recv_hold(client->conn))
+            HTTPD_ERROR("url_fota: espconn_recv_hold() failed\n")
+
+        HTTPD_INFO("url_fota: loop begins: bufused=%u\n", client->bufused)
+
+        system_soft_wdt_feed();
+
+        while (client->bufused > 0 && client->postlen > client->postused) {
+            len = MIN(client->bufused, client->postlen - client->postused);
+            len = MIN(len, SECTOR_LEN - secused);
+
+            os_memcpy(secbuf+secused, client->buf, len);
+            os_memmove(client->buf, client->buf+len, client->bufused-len);
+
+            client->bufused -= len;
+            client->postused += len;
+            secused += len;
+
+            if (secused == SECTOR_LEN || client->postused == client->postlen) {
+                newaddr += client->postused - SECTOR_LEN;
+                HTTPD_INFO("url_fota: postused=0x%05x newaddr=0x%05x\n",
+                           client->postused, newaddr)
+
+                /* FIXME Write the (partial) sector to flash */
+
+                os_bzero(secbuf, SECTOR_LEN);
+                secused = 0;
+            }
+        }
+
+        if (espconn_recv_unhold(client->conn))
+            HTTPD_ERROR("url_fota: espconn_recv_unhold() failed\n")
+
+        if (client->postlen > client->postused)
+            return 0;
+    }
 
     HTTPD_OUTBUF_APPEND("HTTP/1.1 202 Accepted\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")
@@ -70,12 +106,11 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
         HTTPD_ERROR("url_fota: espconn_send() failed\n")
 
+    /* FIXME Set upgrade flag & reboot */
+
     return 1;
 
     fail:
-
-    if (buf != NULL)
-        os_free(buf);
 
     HTTPD_OUTBUF_APPEND("HTTP/1.1 400 Bad Request\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")

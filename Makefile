@@ -133,4 +133,4 @@ flash: eagle.app.flash.bin
 
 fota: eagle.app.flash.bin
 	@echo HTTP_UPDATE
-	@curl --data-binary @$< http://192.168.4.1/fota
+	@curl --data-binary @$< http://192.168.4.1/fota; echo
