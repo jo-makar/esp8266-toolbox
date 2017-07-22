@@ -6,7 +6,10 @@
 #define SSID_PREFIX "esp"
 #define SSID_PASS "l0cK*It_Dwn"
 
-#define MAX_CONN_INBOUND 4
+#define MAX_CONN_IN 4
+#define MAX_CONN MAX_CONN_IN+2
+
+#define HTTPD_MAX_CONN MAX_CONN_IN/2
 
 #define HTTPD_TASK_PRIO USER_TASK_PRIO_0
 

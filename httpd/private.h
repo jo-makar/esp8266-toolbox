@@ -60,7 +60,7 @@ typedef struct {
     uint16_t postlen;
 } HttpdClient;
 
-extern HttpdClient httpd_clients[MAX_CONN_INBOUND];
+extern HttpdClient httpd_clients[HTTPD_MAX_CONN];
 
 typedef struct {
     uint8_t baseurl[HTTPD_URL_LEN/2];

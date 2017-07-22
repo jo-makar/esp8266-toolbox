@@ -1,15 +1,13 @@
 #include <c_types.h>
+#include <mem.h>
 #include <upgrade.h>
 
 #include "httpd.h"
 
 ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
-    uint32_t user1, user2;
     uint32_t size_kb;
-
-    HTTPD_IGNORE_POSTDATA
-
-    /* FIXME Read and process the post data */
+    uint32_t curaddr, newaddr;
+    uint8_t *buf = NULL;
 
     switch (system_get_flash_size_map()) {
         case FLASH_SIZE_4M_MAP_256_256: size_kb = 4*1024 / 8; break;
@@ -23,36 +21,47 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
 
         case FLASH_SIZE_2M:
         default:
-            /* TODO Does this flash size map support partitioning? */
             HTTPD_ERROR("url_fota: unsupported flash map (0x%02x)\n");
             goto fail;
             break;
     }
 
-    os_printf("system_upgrade_userbin_check = %d\n", system_upgrade_userbin_check());
-    os_printf("system_get_userbin_addr = %08x\n", system_get_userbin_addr());
-    os_printf("system_get_flash_size_map = %d\n", system_get_flash_size_map());
-    os_printf("system_upgrade_flag_check = %d\n", system_upgrade_flag_check());
+    curaddr = system_get_userbin_addr();
+    if (curaddr != 4*1024 && curaddr != (size_kb/2+4)*1024) {
+        HTTPD_ERROR("url_fota: unexpected userbin addr\n")
+            goto fail;
+    }
+
+    newaddr = curaddr == 4*1024 ? (size_kb/2+4)*1024 : 4*1024;
+
+    if ((buf = os_malloc(4*1024)) == NULL) {
+        HTTPD_ERROR("url_fota: os_malloc failed\n")
+        goto fail;
+    }
+
+    HTTPD_IGNORE_POSTDATA
+    /* FIXME STOPPED Read and process the post data in 4KB chunks */
 
     HTTPD_OUTBUF_APPEND("HTTP/1.1 202 Accepted\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")
     HTTPD_OUTBUF_APPEND("Content-type: text/html\r\n")
-    HTTPD_OUTBUF_APPEND("Content-length: 26\r\n")
+    HTTPD_OUTBUF_APPEND("Content-length: 47\r\n")
     HTTPD_OUTBUF_APPEND("\r\n")
-    HTTPD_OUTBUF_APPEND("<html><body></body></html>")
-    /* FIXME Include fw info and a msg that a reboot is imminent */
+    HTTPD_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>")
 
     return 0;
 
     fail:
 
+    if (buf != NULL)
+        os_free(buf);
+
     HTTPD_OUTBUF_APPEND("HTTP/1.1 400 Bad Request\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")
     HTTPD_OUTBUF_APPEND("Content-type: text/html\r\n")
-    HTTPD_OUTBUF_APPEND("Content-length: 26\r\n")
+    HTTPD_OUTBUF_APPEND("Content-length: 50\r\n")
     HTTPD_OUTBUF_APPEND("\r\n")
-    HTTPD_OUTBUF_APPEND("<html><body></body></html>")
-    /* FIXME Include reason fw was rejected */
+    HTTPD_OUTBUF_APPEND("<html><body><h1>400 Bad Request</h1></body></html>")
 
     return 0;
 }

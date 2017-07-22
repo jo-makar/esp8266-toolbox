@@ -30,6 +30,10 @@ int os_printf_plus(const char *, ...);
 
 #define os_snprintf ets_snprintf
 
+void *pvPortMalloc(size_t, const char *, unsigned int);
+
 void uart_div_modify(unsigned int, unsigned int);
+
+void vPortFree(void *, const char *, unsigned int);
 
 #endif

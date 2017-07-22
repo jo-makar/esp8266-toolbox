@@ -15,8 +15,7 @@
 ICACHE_FLASH_ATTR void user_init() {
     wifi_init();
 
-    /* TODO Increment as clients are written; eg for FOTA, NTP, MQTT, SMTP */
-    if (espconn_tcp_set_max_con(MAX_CONN_INBOUND))
+    if (espconn_tcp_set_max_con(MAX_CONN))
         CRITICAL("espconn_tcp_set_max_con() failed\n")
 
     httpd_init();

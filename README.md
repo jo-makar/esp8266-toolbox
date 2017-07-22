@@ -3,12 +3,12 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 
 # Completed
 - HTTP server framework
- - Multiple simultaneous clients
- - GET and POST methods
+  - Multiple simultaneous clients
+  - GET and POST methods
 
 # Forthcoming
 - Signed OTA updates
- - Triggered by HTTP POST and scheduled checks
+  - Triggered by HTTP POST and scheduled checks
 - Misc. sensor drivers
 - MQTT client framework
 - SMTP client framework

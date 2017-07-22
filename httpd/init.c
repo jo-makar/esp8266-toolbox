@@ -7,7 +7,7 @@
 #include "httpd.h"
 #include "missing-decls.h"
 
-HttpdClient httpd_clients[MAX_CONN_INBOUND];
+HttpdClient httpd_clients[HTTPD_MAX_CONN];
 
 static struct espconn httpd_conn;
 static esp_tcp httpd_tcp;
@@ -18,7 +18,7 @@ static void httpd_server_error_cb(void *arg, int8_t err);
 static void httpd_client_disconn_cb(void *arg);
 static void httpd_client_recv_cb(void *arg, char *data, unsigned short len);
 
-static os_event_t httpd_task_queue[MAX_CONN_INBOUND];
+static os_event_t httpd_task_queue[HTTPD_MAX_CONN];
 enum httpd_task_signal { HTTPD_DISCONN };
 static void httpd_task(os_event_t *evt);
 
@@ -49,7 +49,7 @@ ICACHE_FLASH_ATTR void httpd_init() {
     /* TODO Are the defaults for espconn_regist_time(), espconn_set_opt()
             and espconn_set_keepalive() acceptable? */
 
-    if (espconn_tcp_set_max_con_allow(&httpd_conn, MAX_CONN_INBOUND))
+    if (espconn_tcp_set_max_con_allow(&httpd_conn, HTTPD_MAX_CONN))
         HTTPD_CRITICAL("espconn_tcp_set_max_con_allow() failed\n")
 
     if (!system_os_task(httpd_task, HTTPD_TASK_PRIO, httpd_task_queue,
