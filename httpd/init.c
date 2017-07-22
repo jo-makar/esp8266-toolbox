@@ -22,7 +22,7 @@ static os_event_t httpd_task_queue[MAX_CONN_INBOUND];
 enum httpd_task_signal { HTTPD_DISCONN };
 static void httpd_task(os_event_t *evt);
 
-void httpd_init() {
+ICACHE_FLASH_ATTR void httpd_init() {
     size_t i;
 
     for (i=0; i<sizeof(httpd_clients)/sizeof(*httpd_clients); i++)
@@ -57,7 +57,7 @@ void httpd_init() {
         HTTPD_CRITICAL("system_os_task() failed\n")
 }
 
-static void httpd_server_conn_cb(void *arg) {
+ICACHE_FLASH_ATTR static void httpd_server_conn_cb(void *arg) {
     struct espconn *conn = arg;
     size_t i;
 
@@ -99,7 +99,7 @@ static void httpd_server_conn_cb(void *arg) {
     conn->reverse = &httpd_clients[i];
 }
 
-static void httpd_server_error_cb(void *arg, int8_t err) {
+ICACHE_FLASH_ATTR static void httpd_server_error_cb(void *arg, int8_t err) {
     struct espconn *conn = arg;
 
     #if HTTPD_LOG_LEVEL <= LEVEL_ERROR
@@ -140,7 +140,7 @@ static void httpd_server_error_cb(void *arg, int8_t err) {
      */
 }
 
-static void httpd_client_disconn_cb(void *arg) {
+ICACHE_FLASH_ATTR static void httpd_client_disconn_cb(void *arg) {
     struct espconn *conn = arg;
     HttpdClient *client;
 
@@ -152,7 +152,8 @@ static void httpd_client_disconn_cb(void *arg) {
         client->inuse = 0;
 }
 
-static void httpd_client_recv_cb(void *arg, char *data, unsigned short len) {
+ICACHE_FLASH_ATTR static void httpd_client_recv_cb(void *arg, char *data,
+                                                   unsigned short len) {
     struct espconn *conn = arg;
     HttpdClient *client;
 
@@ -184,7 +185,7 @@ static void httpd_client_recv_cb(void *arg, char *data, unsigned short len) {
     }
 }
 
-static void httpd_task(os_event_t *evt) {
+ICACHE_FLASH_ATTR static void httpd_task(os_event_t *evt) {
     struct espconn *conn;
 
     switch (evt->sig) {

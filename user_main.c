@@ -12,7 +12,7 @@
     #error "ESP8266 SDK version >= 2.0.0 required"
 #endif
 
-void user_init() {
+ICACHE_FLASH_ATTR void user_init() {
     wifi_init();
 
     /* TODO Increment as clients are written; eg for FOTA, NTP, MQTT, SMTP */

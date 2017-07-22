@@ -16,11 +16,6 @@ FLASH_SIZE_GEN_APPBIN ?= 2
 # esptool.py flash_size argument (8m => 8 Mbits)
 FLASH_SIZE_ESPTOOL ?= 8m
 
-# The first partition is half the flash minus 4KB (boot) and 8KB (OTA key).
-# The second partition is half the flash minus 4KB (blank) and 16KB (sys data).
-# Hence the max size of an app is the space available in the second partition.
-MAX_APP_SIZE = $(shell echo '($(FLASH_SIZE_KB)/2 - (4+16)) * 1024' | bc)
-
 PORT ?= /dev/ttyUSB0
 
 #################################################################################
@@ -38,7 +33,13 @@ ESPTOOL = $(TOOLCHAIN_PATH)/esptool.py
 
 GEN_APPBIN = $(NONOS_SDK_PATH)/tools/gen_appbin.py
 
-CFLAGS = -Os -Wall -Wextra -mlongcalls -mtext-section-literals
+# When the macro ICACHE_FLASH is defined code/rodata marked with
+# ICACHE_{FLASH,RODATA}_ATTR gets loaded into the irom0_0_seg section of flash
+# and are loaded on demand into the MCU's RAM for execution.
+# Otherwise code/rodata is loaded into the significantly smaller iram1_0_seg.
+# NB Some code, such as ISRs, must not be marked with with ICACHE_FLASH_ATTR.
+
+CFLAGS = -Os -Wall -Wextra -mlongcalls -mtext-section-literals -DICACHE_FLASH
 LDFLAGS = -EL -nostdlib -static --gc-sections
 
 # The --start/end-group is necessary for the references between the libraries
@@ -48,6 +49,25 @@ SDKLIBS = --start-group -lc -lgcc -lhal -llwip -lmain -lnet80211 -lpp -lphy \
 BOOT_BIN = $(NONOS_SDK_PATH)/bin/boot_v1.6.bin
 BLANK_BIN = $(NONOS_SDK_PATH)/bin/blank.bin
 ESP_DATA_BIN = $(NONOS_SDK_PATH)/bin/esp_init_data_default.bin
+
+# The first partition is half the flash minus 4KB (boot) and 8KB (OTA key).
+# The second partition is half the flash minus 4KB (blank) and 16KB (sys data).
+# Hence the max size of an app is the space available in the second partition.
+MAX_APP_SIZE = $(shell echo '($(FLASH_SIZE_KB)/2 - (4+16)) * 1024' | bc)
+
+BLANK_ADDR1 = $(shell printf "0x%05x\n" \
+                    `echo '($(FLASH_SIZE_KB)/2 - 8) * 1024' | bc`)
+BLANK_ADDR2 = $(shell printf "0x%05x\n" \
+                    `echo '($(FLASH_SIZE_KB)/2 - 4) * 1024' | bc`)
+
+ESPDATA_ADDR = $(shell printf "0x%05x\n" \
+                    `echo '($(FLASH_SIZE_KB) - 16) * 1024' | bc`)
+BLANK_ADDR3 = $(shell printf "0x%05x\n" \
+                    `echo '($(FLASH_SIZE_KB) - 12) * 1024' | bc`)
+BLANK_ADDR4 = $(shell printf "0x%05x\n" \
+                    `echo '($(FLASH_SIZE_KB) - 8) * 1024' | bc`)
+BLANK_ADDR5 = $(shell printf "0x%05x\n" \
+                    `echo '($(FLASH_SIZE_KB) - 4) * 1024' | bc`)
 
 eagle.app.flash.bin: app.elf
 	@echo GEN_APPBIN $<
@@ -99,10 +119,14 @@ flash: eagle.app.flash.bin
 	@test `du -b $(BLANK_BIN) | awk '{print $$1}'` -le 4096 || false
 	@test `du -b $(ESP_DATA_BIN) | awk '{print $$1}'` -le 4096 || false
 
+	@echo $(BLANK_ADDR1) $(BLANK_ADDR2) $(ESPDATA_ADDR) $(BLANK_ADDR3) $(BLANK_ADDR4) $(BLANK_ADDR5)
 	@$(ESPTOOL) -p $(PORT) write_flash \
              -ff 80m -fm qio -fs $(FLASH_SIZE_ESPTOOL) --verify \
              0x00000 $(BOOT_BIN) \
              0x01000 eagle.app.flash.bin \
-             0x7e000 $(BLANK_BIN) 0x7f000 $(BLANK_BIN) \
-             0xfc000 $(ESP_DATA_BIN) 0xfd000 $(BLANK_BIN) \
-             0xfe000 $(BLANK_BIN) 0xff000 $(BLANK_BIN)
+             $(BLANK_ADDR1) $(BLANK_BIN) \
+             $(BLANK_ADDR2) $(BLANK_BIN) \
+             $(ESPDATA_ADDR) $(ESP_DATA_BIN) \
+             $(BLANK_ADDR3) $(BLANK_BIN) \
+             $(BLANK_ADDR4) $(BLANK_BIN) \
+             $(BLANK_ADDR5) $(BLANK_BIN)

@@ -3,8 +3,10 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
+#include <osapi.h>
 
 #include "../config.h"
+#include "missing-decls.h"
 
 #define HTTPD_CRITICAL(s, ...) { \
     if (HTTPD_LOG_LEVEL <= LEVEL_CRITICAL) \
@@ -60,8 +62,6 @@ typedef struct {
 
 extern HttpdClient httpd_clients[MAX_CONN_INBOUND];
 
-int httpd_process(HttpdClient *client);
-
 typedef struct {
     uint8_t baseurl[HTTPD_URL_LEN/2];
     int (*handler)(HttpdClient *);
@@ -69,8 +69,6 @@ typedef struct {
 
 extern const HttpdUrl httpd_urls[];
 extern const size_t httpd_urlcount;
-
-int httpd_url_404(HttpdClient *client);
 
 #define HTTPD_OUTBUF_MAXLEN 1024
 uint8_t httpd_outbuf[HTTPD_OUTBUF_MAXLEN];
@@ -131,5 +129,11 @@ uint16_t httpd_outbuflen;
     os_strncpy((char *)httpd_outbuf+httpd_outbuflen, src, srclen+1); \
     httpd_outbuflen += srclen; \
 }
+
+int httpd_process(HttpdClient *client);
+
+int httpd_url_404(HttpdClient *client);
+
+int httpd_url_fota(HttpdClient *client);
 
 #endif

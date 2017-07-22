@@ -27,7 +27,7 @@ uint8_t *parseline(const uint8_t *buf, size_t len);
  */
 uint8_t *parsetoken(const uint8_t *buf, size_t len, uint8_t **end);
 
-int httpd_process(HttpdClient *client) {
+ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
     if (client->state == HTTPD_STATE_HEADERS) {
         uint8_t *buf = client->buf;
         int len = client->bufused;
@@ -196,7 +196,7 @@ int httpd_process(HttpdClient *client) {
     return 0;
 }
 
-uint8_t *parseline(const uint8_t *buf, size_t len) {
+ICACHE_FLASH_ATTR uint8_t *parseline(const uint8_t *buf, size_t len) {
     size_t i;
 
     for (i=1; i<len; i++)
@@ -205,7 +205,8 @@ uint8_t *parseline(const uint8_t *buf, size_t len) {
     return NULL;
 }
 
-uint8_t *parsetoken(const uint8_t *buf, size_t len, uint8_t **end) {
+ICACHE_FLASH_ATTR uint8_t *parsetoken(const uint8_t *buf,
+                                       size_t len, uint8_t **end) {
     size_t i;
     const uint8_t *start;
 

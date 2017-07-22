@@ -9,7 +9,7 @@
 
 static void wifi_evt_cb(System_Event_t *evt);
 
-void wifi_init() {
+ICACHE_FLASH_ATTR void wifi_init() {
     struct softap_config conf;
     char ssid[sizeof(conf.ssid)];
 
@@ -48,7 +48,7 @@ void wifi_init() {
     wifi_set_event_handler_cb(wifi_evt_cb);
 }
 
-static void wifi_evt_cb(System_Event_t *evt) {
+ICACHE_FLASH_ATTR static void wifi_evt_cb(System_Event_t *evt) {
     size_t len;
 
     switch (evt->event) {
