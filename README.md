@@ -5,6 +5,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - HTTP server framework
   - Multiple simultaneous clients
   - GET and POST methods
+- SHA256 implementation
 
 # Forthcoming
 - Signed OTA updates

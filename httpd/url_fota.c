@@ -4,46 +4,67 @@
 #include <espconn.h>
 #include <upgrade.h>
 
+#include "../crypto/sha256.h"
 #include "httpd.h"
 
+typedef struct {
+    HttpdClient *client;
+    Sha256State sha256;
+    uint32_t newaddr_beg;
+    uint32_t newaddr_cur;
+} FotaState;
+static FotaState fotastate;
+
 ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
-    uint32_t size_kb;
-    uint32_t curaddr, newaddr;
+    if (client->postused == 0) {
+        uint32_t size_kb;
+        uint32_t curaddr;
 
-    switch (system_get_flash_size_map()) {
-        case FLASH_SIZE_4M_MAP_256_256: size_kb = 4*1024 / 8; break;
-        case FLASH_SIZE_8M_MAP_512_512: size_kb = 8*1024 / 8; break;
-        case FLASH_SIZE_16M_MAP_1024_1024: size_kb = 16*1024 / 8; break;
+        fotastate.client = client;
 
-        /* TODO Assuming it's the full flash size that's relevant */
-        case FLASH_SIZE_16M_MAP_512_512: size_kb = 16*1024 / 8; break;
-        case FLASH_SIZE_32M_MAP_512_512: size_kb = 32*1024 / 8; break;
-        case FLASH_SIZE_32M_MAP_1024_1024: size_kb = 32*1024 / 8; break;
+        sha256_init(&fotastate.sha256);
 
-        case FLASH_SIZE_2M:
-        default:
-            HTTPD_ERROR("url_fota: unsupported flash map (0x%02x)\n");
+        switch (system_get_flash_size_map()) {
+            case FLASH_SIZE_4M_MAP_256_256: size_kb = 4*1024 / 8; break;
+            case FLASH_SIZE_8M_MAP_512_512: size_kb = 8*1024 / 8; break;
+            case FLASH_SIZE_16M_MAP_1024_1024: size_kb = 16*1024 / 8; break;
+
+            /* TODO Assuming it's the full flash size that's relevant */
+            case FLASH_SIZE_16M_MAP_512_512: size_kb = 16*1024 / 8; break;
+            case FLASH_SIZE_32M_MAP_512_512: size_kb = 32*1024 / 8; break;
+            case FLASH_SIZE_32M_MAP_1024_1024: size_kb = 32*1024 / 8; break;
+
+            case FLASH_SIZE_2M:
+            default:
+                HTTPD_ERROR("url_fota: unsupported flash map (0x%02x)\n");
+                goto fail;
+                break;
+        }
+
+        curaddr = system_get_userbin_addr();
+        if (curaddr != 4*1024 && curaddr != (size_kb/2+4)*1024) {
+            HTTPD_ERROR("url_fota: unexpected userbin addr\n")
+                goto fail;
+        }
+
+        #define USER1_ADDR 4*1024
+        #define USER2_ADDR (size_kb/2+4)*1024
+        fotastate.newaddr_beg = fotastate.newaddr_cur =
+            curaddr == USER1_ADDR ? USER2_ADDR : USER1_ADDR;
+
+        if (client->state != HTTPD_STATE_POSTDATA) {
+            HTTPD_ERROR("url_fota: no post data\n")
             goto fail;
-            break;
-    }
+        }
 
-    curaddr = system_get_userbin_addr();
-    if (curaddr != 4*1024 && curaddr != (size_kb/2+4)*1024) {
-        HTTPD_ERROR("url_fota: unexpected userbin addr\n")
+        if (client->postlen > (size_kb/2-20) * 1024) {
+            HTTPD_ERROR("url_fota: max app size exceeded\n")
             goto fail;
+        }
     }
 
-    #define USER1_ADDR 4*1024
-    #define USER2_ADDR (size_kb/2+4)*1024
-    newaddr = curaddr == USER1_ADDR ? USER2_ADDR : USER1_ADDR;
-
-    if (client->state != HTTPD_STATE_POSTDATA) {
-        HTTPD_ERROR("url_fota: no post data\n")
-        goto fail;
-    }
-
-    if (client->postlen > (size_kb/2-20) * 1024) {
-        HTTPD_ERROR("url_fota: max app size exceeded\n")
+    if (fotastate.client != client) {
+        HTTPD_ERROR("url_fota: multiple client detected\n")
         goto fail;
     }
 
@@ -51,10 +72,6 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
      * Process the POST data in chunks
      * (as received from httpd_client_recv_cb)
      */
-
-    /* FIXME Calculate a running sha256 to verify flash later */
-    /* FIXME Write a basic /status page for things like userbin1 addr, etc */
-    /* FIXME Add a version constant to config.h? */
 
     {
         #define SECTOR_LEN 4*1024
@@ -66,7 +83,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
         if (espconn_recv_hold(client->conn))
             HTTPD_ERROR("url_fota: espconn_recv_hold() failed\n")
 
-        HTTPD_INFO("url_fota: loop begins: bufused=%u\n", client->bufused)
+        HTTPD_DEBUG("url_fota: loop begins: bufused=%u\n", client->bufused)
 
         system_soft_wdt_feed();
 
@@ -82,11 +99,13 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
             secused += len;
 
             if (secused == SECTOR_LEN || client->postused == client->postlen) {
-                newaddr += client->postused - SECTOR_LEN;
-                HTTPD_INFO("url_fota: postused=0x%05x newaddr=0x%05x\n",
-                           client->postused, newaddr)
 
                 /* FIXME Write the (partial) sector to flash */
+
+                HTTPD_INFO("url_fota: flashed sector 0x%05x\n",
+                           fotastate.newaddr_cur)
+
+                fotastate.newaddr_cur += SECTOR_LEN;
 
                 os_bzero(secbuf, SECTOR_LEN);
                 secused = 0;

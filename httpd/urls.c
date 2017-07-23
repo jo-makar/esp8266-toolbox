@@ -40,8 +40,8 @@ ICACHE_FLASH_ATTR int httpd_url_blank(HttpdClient *client) {
 }
 
 const HttpdUrl httpd_urls[] = {
-    { "/",     httpd_url_blank },
-    { "/fota", httpd_url_fota },
+    { "/",          httpd_url_blank },
+    { "/fota/push", httpd_url_fota },
 };
 
 const size_t httpd_urlcount = sizeof(httpd_urls) / sizeof(*httpd_urls);
