@@ -20,7 +20,7 @@ PORT ?= /dev/ttyUSB0
 
 #################################################################################
 
-SRC = $(wildcard *.c httpd/*.c)
+SRC = $(wildcard *.c crypto/*.c httpd/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 
@@ -119,7 +119,6 @@ flash: eagle.app.flash.bin
 	@test `du -b $(BLANK_BIN) | awk '{print $$1}'` -le 4096 || false
 	@test `du -b $(ESP_DATA_BIN) | awk '{print $$1}'` -le 4096 || false
 
-	@echo $(BLANK_ADDR1) $(BLANK_ADDR2) $(ESPDATA_ADDR) $(BLANK_ADDR3) $(BLANK_ADDR4) $(BLANK_ADDR5)
 	@$(ESPTOOL) -p $(PORT) write_flash \
              -ff 80m -fm qio -fs $(FLASH_SIZE_ESPTOOL) --verify \
              0x00000 $(BOOT_BIN) \

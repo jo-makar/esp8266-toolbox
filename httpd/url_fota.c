@@ -52,6 +52,10 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
      * (as received from httpd_client_recv_cb)
      */
 
+    /* FIXME Calculate a running sha256 to verify flash later */
+    /* FIXME Write a basic /status page for things like userbin1 addr, etc */
+    /* FIXME Add a version constant to config.h? */
+
     {
         #define SECTOR_LEN 4*1024
         static uint8_t secbuf[SECTOR_LEN];

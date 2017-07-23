@@ -1,6 +1,8 @@
 #ifndef MISSING_DECLS_H
 #define MISSING_DECLS_H
 
+#include <c_types.h>
+
 void ets_bzero(void *, size_t);
 
 void ets_delay_us(uint16);
