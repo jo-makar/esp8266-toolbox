@@ -9,17 +9,27 @@
 
 typedef struct {
     HttpdClient *client;
+
     Sha256State sha256;
+    uint8_t hash[32];
+
     uint32_t newaddr_beg;
     uint32_t newaddr_cur;
+
+    #define SECTOR_LEN 4*1024
+    uint8_t secbuf[SECTOR_LEN];
+    uint16_t secused;
+
 } FotaState;
+
 static FotaState fotastate;
 
 ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
-    if (client->postused == 0) {
-        uint32_t size_kb;
-        uint32_t curaddr;
+    uint32_t size_kb;
+    uint32_t curaddr;
+    size_t len;
 
+    if (client->postused == 0) {
         fotastate.client = client;
 
         sha256_init(&fotastate.sha256);
@@ -52,6 +62,8 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
         fotastate.newaddr_beg = fotastate.newaddr_cur =
             curaddr == USER1_ADDR ? USER2_ADDR : USER1_ADDR;
 
+        fotastate.secused = 0;
+
         if (client->state != HTTPD_STATE_POSTDATA) {
             HTTPD_ERROR("url_fota: no post data\n")
             goto fail;
@@ -73,51 +85,60 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
      * (as received from httpd_client_recv_cb)
      */
 
-    {
-        #define SECTOR_LEN 4*1024
-        static uint8_t secbuf[SECTOR_LEN];
-        static uint16_t secused = 0;
+    if (espconn_recv_hold(client->conn))
+        HTTPD_ERROR("url_fota: espconn_recv_hold() failed\n")
 
-        size_t len;
+    HTTPD_DEBUG("url_fota: loop begins: bufused=%u\n", client->bufused)
 
-        if (espconn_recv_hold(client->conn))
-            HTTPD_ERROR("url_fota: espconn_recv_hold() failed\n")
+    system_soft_wdt_feed();
 
-        HTTPD_DEBUG("url_fota: loop begins: bufused=%u\n", client->bufused)
+    while (client->bufused > 0 && client->postlen > client->postused) {
+        len = MIN(client->bufused, client->postlen - client->postused);
+        len = MIN(len, SECTOR_LEN - fotastate.secused);
 
-        system_soft_wdt_feed();
+        os_memcpy(fotastate.secbuf+fotastate.secused, client->buf, len);
+        os_memmove(client->buf, client->buf+len, client->bufused-len);
 
-        while (client->bufused > 0 && client->postlen > client->postused) {
-            len = MIN(client->bufused, client->postlen - client->postused);
-            len = MIN(len, SECTOR_LEN - secused);
+        client->bufused -= len;
+        client->postused += len;
+        fotastate.secused += len;
 
-            os_memcpy(secbuf+secused, client->buf, len);
-            os_memmove(client->buf, client->buf+len, client->bufused-len);
+        if (fotastate.secused==SECTOR_LEN || client->postused==client->postlen) {
 
-            client->bufused -= len;
-            client->postused += len;
-            secused += len;
+            /* FIXME STOPPED Write the (partial) sector to flash */
 
-            if (secused == SECTOR_LEN || client->postused == client->postlen) {
+            sha256_proc(&fotastate.sha256, fotastate.secbuf, fotastate.secused);
 
-                /* FIXME Write the (partial) sector to flash */
+            HTTPD_INFO("url_fota: flashed sector 0x%05x\n",
+                       fotastate.newaddr_cur)
 
-                HTTPD_INFO("url_fota: flashed sector 0x%05x\n",
-                           fotastate.newaddr_cur)
+            fotastate.newaddr_cur += SECTOR_LEN;
 
-                fotastate.newaddr_cur += SECTOR_LEN;
-
-                os_bzero(secbuf, SECTOR_LEN);
-                secused = 0;
-            }
+            os_bzero(fotastate.secbuf, SECTOR_LEN);
+            fotastate.secused = 0;
         }
-
-        if (espconn_recv_unhold(client->conn))
-            HTTPD_ERROR("url_fota: espconn_recv_unhold() failed\n")
-
-        if (client->postlen > client->postused)
-            return 0;
     }
+
+    if (espconn_recv_unhold(client->conn))
+        HTTPD_ERROR("url_fota: espconn_recv_unhold() failed\n")
+
+    if (client->postlen > client->postused)
+        return 0;
+
+    sha256_done(&fotastate.sha256, fotastate.hash);
+
+    #if HTTPD_LOG_LEVEL <= LEVEL_INFO
+    {
+        uint32_t t = system_get_time();
+        uint8_t i;
+
+        os_printf("%u.%03u: info: %s:%u: url_fota: sha256=",
+                  t/1000000, (t%1000000)/1000, __FILE__, __LINE__);
+        for (i=0; i<32; i++)
+            os_printf("%02x", fotastate.hash[i]);
+        os_printf("\n");
+    }
+    #endif
 
     HTTPD_OUTBUF_APPEND("HTTP/1.1 202 Accepted\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")

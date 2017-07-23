@@ -134,7 +134,11 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
         client->bufused -= buf-client->buf;
 
         #if HTTPD_LOG_LEVEL <= LEVEL_INFO
-            os_printf("info: %s:%u: ", __FILE__, __LINE__);
+        {
+            uint32_t t = system_get_time();
+
+            os_printf("%u.%03u: info: %s:%u: ",
+                      t/1000000, (t%1000000)/1000, __FILE__, __LINE__);
             os_printf("process: " IPSTR ":%u ",
                       IP2STR(client->conn->proto.tcp->remote_ip),
                       client->conn->proto.tcp->remote_port);
@@ -145,6 +149,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
                 os_printf("post len=%u ", client->postlen);
 
             os_printf("url=%s\n", client->url);
+        }
         #endif
 
         if (client->method == HTTPD_METHOD_GET) {

@@ -59,7 +59,7 @@ ICACHE_FLASH_ATTR void sha256_proc(Sha256State *state,
     }
 }
 
-ICACHE_FLASH_ATTR void sha256_done(Sha256State *state, char *hash) {
+ICACHE_FLASH_ATTR void sha256_done(Sha256State *state, uint8_t *hash) {
     uint64_t total;
     uint8_t i;
 

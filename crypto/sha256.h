@@ -11,6 +11,6 @@ typedef struct {
 
 void sha256_init(Sha256State *state);
 void sha256_proc(Sha256State *state, const uint8_t *buf, size_t len);
-void sha256_done(Sha256State *state, char *hash);
+void sha256_done(Sha256State *state, uint8_t *hash);
 
 #endif

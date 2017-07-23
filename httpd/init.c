@@ -103,7 +103,11 @@ ICACHE_FLASH_ATTR static void httpd_server_error_cb(void *arg, int8_t err) {
     struct espconn *conn = arg;
 
     #if HTTPD_LOG_LEVEL <= LEVEL_ERROR
-        os_printf("error: %s:%d: ", __FILE__, __LINE__);
+    {
+        uint32_t t = system_get_time();
+
+        os_printf("%u.%03u: error: %s:%d: ",
+                  t/1000000, (t%1000000)/1000, __FILE__, __LINE__);
 
         switch (err) {
             case ESPCONN_TIMEOUT:
@@ -131,6 +135,7 @@ ICACHE_FLASH_ATTR static void httpd_server_error_cb(void *arg, int8_t err) {
 
         os_printf(IPSTR ":%u\n", IP2STR(conn->proto.tcp->remote_ip),
                 conn->proto.tcp->remote_port);
+    }
     #endif
 
     /*

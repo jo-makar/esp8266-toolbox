@@ -83,7 +83,7 @@ eagle.app.flash.bin: app.elf
 	@# TODO Specific information on the various parameters here
 
 	@# gen_appbin.py appends to an existing file
-	@rm -f eagle.app.flash.bin
+	@rm -f $@
 
 	@COMPILE=gcc PATH=$$PATH:$(TOOLCHAIN_PATH) python $(GEN_APPBIN) $< \
              2 0 15 $(FLASH_SIZE_GEN_APPBIN) 0
@@ -91,9 +91,8 @@ eagle.app.flash.bin: app.elf
 	@rm eagle.app.v6.*.bin
 
 	@# Verify eagle.app.flash.bin (user app) is within size limits
-	@test `du -b eagle.app.flash.bin | awk '{print $$1}'` \
-         -le $(MAX_APP_SIZE) || false
-	@du -b eagle.app.flash.bin | \
+	@test `du -b $@ | awk '{print $$1}'` -le $(MAX_APP_SIZE) || false
+	@du -b $@ | \
          awk '{printf "%.2f KB, %.3f%%\n", $$1/1024, $$1/$(MAX_APP_SIZE)*100}'
 
 app.elf: $(OBJ)
@@ -132,4 +131,5 @@ flash: eagle.app.flash.bin
 
 fota: eagle.app.flash.bin
 	@echo HTTP_UPDATE
+	@sha256sum $< | awk '{print $$1}'
 	@curl --data-binary @$< http://192.168.4.1/fota/push; echo
