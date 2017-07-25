@@ -27,17 +27,17 @@ rebooted into the new application.
 The Makefile target fota shows how this can be done with curl.
 
 # Quick start
-1. Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
-1. Modify the variables at the top of the Makefile if necessary
-1. Run `make` to build the application binary
-1. Breadboard a circuit (refer to /hw for a development schematic)
-1. Power the circuit and connect via a USB-UART bridge
-1. Put the ESP8266 in flash mode by holding GPIO0 low during boot
-1. Run `make flash` to flash the bins (as root or user with appropriate perms)
-1. The default WiFi SSID is `esp-<system id in hex>`
-1. The default WiFi password is in /config.h
-1. The default IP address is 192.168.4.1
-1. The applications uart0.py and uart0/uart0 are provided for debugging output
+- Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
+- Modify the variables at the top of the Makefile if necessary
+- Run `make` to build the application binary
+- Breadboard a circuit (refer to /hw for a development schematic)
+- Power the circuit and connect via a USB-UART bridge
+- Put the ESP8266 in flash mode by holding GPIO0 low during boot
+- Run `make flash` to flash the bins (as root or user with appropriate perms)
+- The default WiFi SSID is `esp-<system id in hex>`
+- The default WiFi password is in /config.h
+- The default IP address is 192.168.4.1
+- The applications uart0.py and uart0/uart0 are provided for debugging output
   - uart0/uart0 is for USB-UART bridges that don't inherently support
     non-standard baudrates
 
