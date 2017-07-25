@@ -37,6 +37,9 @@ The Makefile target fota shows how this can be done with curl.
 1. The default WiFi SSID is `esp-<system id in hex>`
 1. The default WiFi password is in /config.h
 1. The default IP address is 192.168.4.1
+1. The applications uart0.py and uart0/uart0 are provided for debugging output
+  - uart0/uart0 is for USB-UART bridges that don't inherently support
+    non-standard baudrates
 
 # Coding style
 - 80 character line limits (for multiple horizontally-split editor views)
