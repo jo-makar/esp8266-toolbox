@@ -6,13 +6,25 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
   - Multiple simultaneous clients
   - GET and POST methods
 - SHA256 implementation
+- Push-based OTA updates
+  - Triggered by HTTP POST on /fota/push
 
 # Forthcoming
 - Signed OTA updates
-  - Triggered by HTTP POST and scheduled checks
+- Pull-based OTA updates
+  - Scheduled checks every six hours
 - Misc. sensor drivers
 - MQTT client framework
 - SMTP client framework
+
+# OTA updates
+An unencoded binary is uploaded by HTTP POST to `/fota/push`.  The binary gets
+written to the unused partition in flash while its hash is calculated.  When done
+it is read from flash and its hash is recalculated to verify the write integrity,
+if successful an HTTP `202 Accepted` response is returned and the system is
+rebooted into the new application.
+
+The `Makefile` target `fota` shows how this can be done with `curl`.
 
 # Installation (Linux)
 1. Install the ESP8266 toolchain and SDK if not already installed:

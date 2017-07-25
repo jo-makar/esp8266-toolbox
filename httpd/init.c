@@ -19,7 +19,6 @@ static void httpd_client_disconn_cb(void *arg);
 static void httpd_client_recv_cb(void *arg, char *data, unsigned short len);
 
 static os_event_t httpd_task_queue[HTTPD_MAX_CONN];
-enum httpd_task_signal { HTTPD_DISCONN };
 static void httpd_task(os_event_t *evt);
 
 ICACHE_FLASH_ATTR void httpd_init() {

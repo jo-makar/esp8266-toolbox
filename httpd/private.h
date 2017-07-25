@@ -82,6 +82,8 @@ typedef struct {
 
 extern HttpdClient httpd_clients[HTTPD_MAX_CONN];
 
+enum httpd_task_signal { HTTPD_DISCONN };
+
 typedef struct {
     uint8_t baseurl[HTTPD_URL_LEN/2];
     int (*handler)(HttpdClient *);

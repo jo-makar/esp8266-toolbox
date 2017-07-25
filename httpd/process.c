@@ -83,6 +83,8 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
         len -= nextline-buf;
 
         while (1) {
+            system_soft_wdt_feed();
+
             if (len>=2 && buf[0]=='\r' && buf[1]=='\n') {
                 buf += 2;
                 len -= 2;

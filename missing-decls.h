@@ -2,6 +2,7 @@
 #define MISSING_DECLS_H
 
 #include <c_types.h>
+#include <user_interface.h>
 
 void ets_bzero(void *, size_t);
 
@@ -25,6 +26,10 @@ int ets_strcmp(const char *, const char *);
 int ets_strncmp(const char *, const char *, size_t);
 
 char *ets_strncpy(char *, const char *, size_t n);
+
+void ets_timer_arm_new(os_timer_t *, uint32_t, bool, int);
+void ets_timer_disarm(os_timer_t *);
+void ets_timer_setfn(os_timer_t *, os_timer_func_t *, void *);
 
 int ets_uart_printf(const char *, ...);
 
