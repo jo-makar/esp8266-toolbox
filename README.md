@@ -21,7 +21,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 An unencoded binary is uploaded by HTTP POST to /fota/push.  The binary gets
 written to the unused partition in flash while its hash is calculated.  When done
 it is read from flash and its hash is recalculated to verify the write integrity,
-if successful an HTTP `202 Accepted` response is returned and the system is
+if successful an HTTP 202 Accepted response is returned and the system is
 rebooted into the new application.
 
 The Makefile target fota shows how this can be done with curl.
@@ -34,7 +34,7 @@ The Makefile target fota shows how this can be done with curl.
 1. Power the circuit and connect via a USB-UART bridge
 1. Put the ESP8266 in flash mode by holding GPIO0 low during boot
 1. Run `make flash` to flash the bins (as root or user with appropriate perms)
-1. The default WiFi SSID is `esp-<system id in hex>`
+1. The default WiFi SSID is esp-<system id in hex>
 1. The default WiFi password is in /config.h
 1. The default IP address is 192.168.4.1
 
