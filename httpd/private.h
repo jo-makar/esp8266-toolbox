@@ -6,54 +6,8 @@
 #include <osapi.h>
 
 #include "../config.h"
-#include "missing-decls.h"
-
-#define HTTPD_CRITICAL(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (HTTPD_LOG_LEVEL <= LEVEL_CRITICAL) \
-        os_printf("%u.%03u: critical: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
-    \
-    while (1) os_delay_us(1000); \
-}
-
-#define HTTPD_ERROR(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (HTTPD_LOG_LEVEL <= LEVEL_ERROR) \
-        os_printf("%u.%03u: error: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
-}
-
-#define HTTPD_WARNING(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (HTTPD_LOG_LEVEL <= LEVEL_WARNING) \
-        os_printf("%u.%03u: warning: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
-}
-
-#define HTTPD_INFO(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (HTTPD_LOG_LEVEL <= LEVEL_INFO) \
-        os_printf("%u.%03u: info: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
-}
-
-#define HTTPD_DEBUG(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (HTTPD_LOG_LEVEL <= LEVEL_DEBUG) \
-        os_printf("%u.%03u: debug: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
-}
+#include "../log.h"
+#include "../missing-decls.h"
 
 typedef struct {
     uint8_t inuse;
@@ -108,7 +62,7 @@ uint16_t httpd_outbuflen;
         if (client->postused == client->postlen) { \
             client->state = HTTPD_STATE_RESPONSE; \
             if (client->bufused > 0) \
-                HTTPD_WARNING("urls: extra bytes after post\n") \
+                WARNING(HTTPD, "extra bytes after post data\n") \
         } \
         else \
             return 0; \
@@ -119,7 +73,7 @@ uint16_t httpd_outbuflen;
     size_t srclen; \
     \
     if ((srclen = os_strlen(src)) >= sizeof(httpd_outbuf)-httpd_outbuflen) { \
-        HTTPD_ERROR("urls: outbuf overflow\n") \
+        ERROR(HTTPD, "httpd_outbuf overflow\n") \
         return 0; \
     } \
     \

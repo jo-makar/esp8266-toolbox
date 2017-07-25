@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "httpd.h"
+#include "log.h"
 #include "missing-decls.h"
 
 /*
@@ -44,7 +45,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
             return 0;
 
         if ((token = parsetoken(buf, nextline-buf, &nexttoken)) == NULL) {
-            HTTPD_WARNING("process: incomplete request line\n")
+            WARNING(HTTPD, "incomplete request line\n")
             return 1;
         }
 
@@ -54,18 +55,18 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
             client->method = HTTPD_METHOD_POST;
         else {
             nexttoken = 0;
-            HTTPD_WARNING("process: unsupported method: %s\n", token)
+            WARNING(HTTPD, "unsupported method: %s\n", token)
             return 1;
         }
 
         if ((token = parsetoken(nexttoken,
                                 nextline-nexttoken, &nexttoken)) == NULL) {
-            HTTPD_WARNING("process: incomplete request line\n")
+            WARNING(HTTPD, "incomplete request line\n")
             return 1;
         }
 
         if ((size_t)(nexttoken-token) > sizeof(client->url)) {
-            HTTPD_WARNING("process: client url overflow\n")
+            WARNING(HTTPD, "client url overflow\n")
             return 1;
         }
 
@@ -95,7 +96,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
                 return 0;
 
             if ((token = parsetoken(buf, nextline-buf, &nexttoken)) == NULL) {
-                HTTPD_WARNING("process: bad header line\n")
+                WARNING(HTTPD, "bad header line\n")
                 return 1;
             }
 
@@ -103,12 +104,12 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
                            MIN(nexttoken-token, 5)) == 0) {
                 if ((token = parsetoken(nexttoken, nextline-nexttoken,
                                         &nexttoken)) == NULL) {
-                    HTTPD_WARNING("process: incomplete host header line\n")
+                    WARNING(HTTPD, "incomplete host header line\n")
                     return 1;
                 }
 
                 if ((size_t)(nexttoken-token) > sizeof(client->host)) {
-                    HTTPD_WARNING("process: client host overflow\n")
+                    WARNING(HTTPD, "client host overflow\n")
                     return 1;
                 }
 
@@ -120,7 +121,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
                                   MIN(nexttoken-token, 15)) == 0) {
                 if ((token = parsetoken(nexttoken, nextline-nexttoken,
                                         &nexttoken)) == NULL) {
-                    HTTPD_WARNING("process: incomplete cl header line\n")
+                    WARNING(HTTPD, "incomplete cl header line\n")
                     return 1;
                 }
 
@@ -137,13 +138,10 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
 
         #if HTTPD_LOG_LEVEL <= LEVEL_INFO
         {
-            uint32_t t = system_get_time();
+            INFO_PREFIX
 
-            os_printf("%u.%03u: info: %s:%u: ",
-                      t/1000000, (t%1000000)/1000, __FILE__, __LINE__);
-            os_printf("process: " IPSTR ":%u ",
-                      IP2STR(client->conn->proto.tcp->remote_ip),
-                      client->conn->proto.tcp->remote_port);
+            os_printf(IPSTR ":%u ", IP2STR(client->conn->proto.tcp->remote_ip),
+                                    client->conn->proto.tcp->remote_port);
 
             if (client->method == HTTPD_METHOD_GET)
                 os_printf("get ");
@@ -157,7 +155,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
         if (client->method == HTTPD_METHOD_GET) {
             client->state = HTTPD_STATE_RESPONSE;
             if (client->bufused > 0)
-                HTTPD_WARNING("process: extra bytes after get\n")
+                WARNING(HTTPD, "extra bytes after get\n")
         } else /* if HTTPD_METHOD_POST */
             client->state = HTTPD_STATE_POSTDATA;
     }
@@ -173,7 +171,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
             end = beg + os_strlen(beg);
 
         if ((size_t)(end-beg) > sizeof(baseurl)) {
-            HTTPD_WARNING("process: baseurl overflow\n")
+            WARNING(HTTPD, "baseurl overflow\n")
             return 1;
         }
 

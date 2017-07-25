@@ -7,51 +7,53 @@
 #include "config.h"
 #include "missing-decls.h"
 
-#define CRITICAL(s, ...) { \
+#define _PREFIX(level) { \
     uint32_t t = system_get_time(); \
-    \
-    if (LOG_LEVEL <= LEVEL_CRITICAL) \
-        os_printf("%u.%03u: critical: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
+    os_printf("%u.%03u: " level ": %s:%d: ", \
+              t/1000000, (t%1000000)/1000, __FILE__, __LINE__); \
+}
+
+#define CRITICAL_PREFIX _PREFIX("critical")
+#define ERROR_PREFIX _PREFIX("error")
+#define WARNING_PREFIX _PREFIX("warning")
+#define INFO_PREFIX _PREFIX("info")
+#define DEBUG_PREFIX _PREFIX("debug")
+
+#define CRITICAL(sys, fmt, ...) { \
+    if (sys##_LOG_LEVEL <= LEVEL_CRITICAL) { \
+        CRITICAL_PREFIX \
+        os_printf(fmt, ##__VA_ARGS__); \
+    } \
     \
     while (1) os_delay_us(1000); \
 }
 
-#define ERROR(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (LOG_LEVEL <= LEVEL_ERROR) \
-        os_printf("%u.%03u: error: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
+#define ERROR(sys, fmt, ...) { \
+    if (sys##_LOG_LEVEL <= LEVEL_ERROR) { \
+        ERROR_PREFIX \
+        os_printf(fmt, ##__VA_ARGS__); \
+    } \
 }
 
-#define WARNING(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (LOG_LEVEL <= LEVEL_WARNING) \
-        os_printf("%u.%03u: warning: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
+#define WARNING(sys, fmt, ...) { \
+    if (sys##_LOG_LEVEL <= LEVEL_WARNING) { \
+        WARNING_PREFIX \
+        os_printf(fmt, ##__VA_ARGS__); \
+    } \
 }
 
-#define INFO(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (LOG_LEVEL <= LEVEL_INFO) \
-        os_printf("%u.%03u: info: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
+#define INFO(sys, fmt, ...) { \
+    if (sys##_LOG_LEVEL <= LEVEL_INFO) { \
+        INFO_PREFIX \
+        os_printf(fmt, ##__VA_ARGS__); \
+    } \
 }
 
-#define DEBUG(s, ...) { \
-    uint32_t t = system_get_time(); \
-    \
-    if (LOG_LEVEL <= LEVEL_DEBUG) \
-        os_printf("%u.%03u: debug: %s:%d: " s, \
-                  t/1000000, (t%1000000)/1000, \
-                  __FILE__, __LINE__, ##__VA_ARGS__); \
+#define DEBUG(sys, fmt, ...) { \
+    if (sys##_LOG_LEVEL <= LEVEL_DEBUG) { \
+        DEBUG_PREFIX \
+        os_printf(fmt, ##__VA_ARGS__); \
+    } \
 }
 
 #endif

@@ -37,14 +37,33 @@ The Makefile target fota shows how this can be done with curl.
 - The default WiFi SSID is `esp-<system id in hex>`
 - The default WiFi password is in /config.h
 - The default IP address is 192.168.4.1
-- The applications uart0.py and uart0/uart0 are provided for debugging output
-  - uart0/uart0 is for USB-UART bridges that don't inherently support
-    non-standard baudrates
 
 # Coding style
 - 80 character line limits (for multiple horizontally-split editor views)
 - Prefer to put function-scope variables at the top of the function; to help
   facilitate calculation of stack space used by the function
+
+# Debug output
+A logging system modelled after syslog is provided for output over UART0.  The
+macros are defined in /log.h and system log levels set in /config.h.  An example
+log snapshot follows.
+
+    1.747: debug: wifi.c:94: softap: staconnected mac=74:da:38:3a:fd:39 aid=01
+    9.848: info: httpd/process.c:141: 192.168.4.2:49933 post len=238708 url=/fota/push
+    10.931: info: httpd/url_fota.c:133: flashed sector 0x81000
+    11.014: info: httpd/url_fota.c:133: flashed sector 0x82000
+
+    other flash sector entries elided
+
+    15.620: info: httpd/url_fota.c:133: flashed sector 0xba000
+    15.691: info: httpd/url_fota.c:133: flashed sector 0xbb000
+    15.691: info: httpd/url_fota.c:152: 8ed9df19463cd5f966ad0bbc17931bc661a5cc516092148a7d28f99e0cba8a14
+    16.050: info: httpd/url_fota.c:192: 8ed9df19463cd5f966ad0bbc17931bc661a5cc516092148a7d28f99e0cba8a14
+    21.051: info: httpd/url_fota.c:241: rebooting
+
+The applications `uart0.py` and `uart0/uart0` are provided for debugging output.
+`uart0/uart0` is for USB-UART bridges that don't inherently support non-standard
+baudrates.
 
 # License
 This software is freely available for non-commerical use, commerical use requires

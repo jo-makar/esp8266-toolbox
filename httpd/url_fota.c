@@ -7,6 +7,7 @@
 #include <upgrade.h>
 
 #include "../crypto/sha256.h"
+#include "../log.h"
 #include "httpd.h"
 
 typedef struct {
@@ -52,14 +53,14 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
 
             case FLASH_SIZE_2M:
             default:
-                HTTPD_ERROR("url_fota: unsupported flash map (0x%02x)\n");
+                ERROR(HTTPD, "unsupported flash map (0x%02x)\n")
                 goto fail;
                 break;
         }
 
         curaddr = system_get_userbin_addr();
         if (curaddr != 4*1024 && curaddr != (size_kb/2+4)*1024) {
-            HTTPD_ERROR("url_fota: unexpected userbin addr\n")
+            ERROR(HTTPD, "unexpected userbin addr\n")
             goto fail;
         }
 
@@ -73,18 +74,18 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
         fotastate.secused = 0;
 
         if (client->state != HTTPD_STATE_POSTDATA) {
-            HTTPD_ERROR("url_fota: no post data\n")
+            ERROR(HTTPD, "no post data\n")
             goto fail;
         }
 
         if (client->postlen > (size_kb/2-20) * 1024) {
-            HTTPD_ERROR("url_fota: max app size exceeded\n")
+            ERROR(HTTPD, "max app size exceeded\n")
             goto fail;
         }
     }
 
     if (fotastate.client != client) {
-        HTTPD_ERROR("url_fota: multiple client detected\n")
+        ERROR(HTTPD, "multiple client detected\n")
         goto fail;
     }
 
@@ -94,9 +95,9 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
      */
 
     if (espconn_recv_hold(client->conn))
-        HTTPD_ERROR("url_fota: espconn_recv_hold() failed\n")
+        ERROR(HTTPD, "espconn_recv_hold() failed\n")
 
-    HTTPD_DEBUG("url_fota: loop begins: bufused=%u\n", client->bufused)
+    DEBUG(HTTPD, "loop begins: bufused=%u\n", client->bufused)
 
     while (client->bufused > 0 && client->postlen > client->postused) {
         system_soft_wdt_feed();
@@ -116,21 +117,20 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
 
             if (spi_flash_erase_sector(fotastate.newaddr_cur/SPI_FLASH_SEC_SIZE)
                     != SPI_FLASH_RESULT_OK) {
-                HTTPD_ERROR("url_fota: spi_flash_erase_sector() failed\n")
+                ERROR(HTTPD, "spi_flash_erase_sector() failed\n")
                 goto fail;
             }
 
             if (spi_flash_write(fotastate.newaddr_cur,
                                 (uint32_t *)fotastate.secbuf, SPI_FLASH_SEC_SIZE)
                     != SPI_FLASH_RESULT_OK) {
-                HTTPD_ERROR("url_fota: spi_flash_write() failed\n")
+                ERROR(HTTPD, "spi_flash_write() failed\n")
                 goto fail;
             }
 
             sha256_proc(&fotastate.sha256, fotastate.secbuf, fotastate.secused);
 
-            HTTPD_INFO("url_fota: flashed sector 0x%05x\n",
-                       fotastate.newaddr_cur)
+            INFO(HTTPD, "flashed sector 0x%05x\n", fotastate.newaddr_cur)
 
             fotastate.newaddr_cur += SPI_FLASH_SEC_SIZE;
 
@@ -140,7 +140,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     }
 
     if (espconn_recv_unhold(client->conn))
-        HTTPD_ERROR("url_fota: espconn_recv_unhold() failed\n")
+        ERROR(HTTPD, "espconn_recv_unhold() failed\n")
 
     if (client->postlen > client->postused)
         return 0;
@@ -149,11 +149,9 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
 
     #if HTTPD_LOG_LEVEL <= LEVEL_INFO
     {
-        uint32_t t = system_get_time();
+        INFO_PREFIX
         uint8_t i;
 
-        os_printf("%u.%03u: info: %s:%u: url_fota: hash1=",
-                  t/1000000, (t%1000000)/1000, __FILE__, __LINE__);
         for (i=0; i<32; i++)
             os_printf("%02x", fotastate.hash1[i]);
         os_printf("\n");
@@ -176,7 +174,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
         if (spi_flash_read(addr, (uint32_t *)fotastate.secbuf,
                            SPI_FLASH_SEC_SIZE)
                 != SPI_FLASH_RESULT_OK) {
-            HTTPD_ERROR("url_fota: spi_flash_read() failed\n")
+            ERROR(HTTPD, "spi_flash_read() failed\n")
             goto fail;
         }
 
@@ -191,11 +189,9 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
 
     #if HTTPD_LOG_LEVEL <= LEVEL_INFO
     {
-        uint32_t t = system_get_time();
+        INFO_PREFIX
         uint8_t i;
 
-        os_printf("%u.%03u: info: %s:%u: url_fota: hash2=",
-                  t/1000000, (t%1000000)/1000, __FILE__, __LINE__);
         for (i=0; i<32; i++)
             os_printf("%02x", fotastate.hash2[i]);
         os_printf("\n");
@@ -203,7 +199,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     #endif
 
     if (os_strncmp((char *)fotastate.hash1, (char *)fotastate.hash2, 32) != 0) {
-        HTTPD_ERROR("url_fota: hash mismatch\n")
+        ERROR(HTTPD, "hash mismatch\n")
         goto fail;
     }
 
@@ -215,7 +211,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        HTTPD_ERROR("url_fota: espconn_send() failed\n")
+        ERROR(HTTPD, "espconn_send() failed\n")
 
     /* Set a timer to reboot into the new app after five seconds */
     os_timer_disarm(&fotastate.timer);
@@ -234,7 +230,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("<html><body><h1>400 Bad Request</h1></body></html>")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        HTTPD_ERROR("url_fota: espconn_send() failed\n")
+        ERROR(HTTPD, "espconn_send() failed\n")
 
     return 1;
 }
@@ -242,7 +238,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
 ICACHE_FLASH_ATTR static void fota_reboot(void *arg) {
     (void)arg;
 
-    HTTPD_INFO("url_fota: rebooting\n")
+    INFO(HTTPD, "rebooting\n")
 
     system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
     system_upgrade_reboot();
