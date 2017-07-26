@@ -2,18 +2,20 @@
 Motley of servers and clients for the ESP8266 with signed OTA updates
 
 # Completed
-- HTTP server framework
-  - Multiple simultaneous clients
-  - GET and POST methods
-- SHA256 implementation
-- Push-based OTA updates
-  - Triggered by HTTP POST on /fota/push
+- [x] HTTP server framework
+  - [x] Multiple simultaneous clients
+  - [ ] GET and POST methods
+- [ ] SHA256 implementation
+- [ ] Push-based OTA updates
+  - [ ] Triggered by HTTP POST on /fota/push
 
 # Forthcoming
 - Signed OTA updates
-- Pull-based OTA updates
-  - Scheduled checks every six hours
-- Misc. sensor drivers
+- Pull-based OTA updates via HTTP GET
+  - Scheduled checks say every six hours by a dedicated task
+  - The server url is to take an id param for device-specific apps/keys
+- Misc. sensor drivers (temp./humidity, light, motion, GPS, etc)
+- NTP client framework (provided by the SDK)
 - MQTT client framework
 - SMTP client framework
 
@@ -25,6 +27,12 @@ if successful an HTTP 202 Accepted response is returned and the system is
 rebooted into the new application.
 
 The Makefile target fota shows how this can be done with curl.
+
+# Provided urls
+Url | Description
+--- | -----------
+/fota/push | Push-based OTA updates (described above)
+/info | General sys info: version, uptime, etc
 
 # Quick start
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
@@ -38,17 +46,12 @@ The Makefile target fota shows how this can be done with curl.
 - The default WiFi password is in /config.h
 - The default IP address is 192.168.4.1
 
-# Coding style
-- 80 character line limits (for multiple horizontally-split editor views)
-- Prefer to put function-scope variables at the top of the function; to help
-  facilitate calculation of stack space used by the function
-
 # Debug output
 A logging system modelled after syslog is provided for output over UART0.  The
 macros are defined in /log.h and system log levels set in /config.h.  An example
 log snapshot follows.
 
-    1.747: debug: wifi.c:94: softap: staconnected mac=74:da:38:3a:fd:39 aid=01
+    1.747: debug: wifi.c:94: softap: staconnected mac=74:f3:38:3a:fd:39 aid=01
     9.848: info: httpd/process.c:141: 192.168.4.2:49933 post len=238708 url=/fota/push
     10.931: info: httpd/url_fota.c:133: flashed sector 0x81000
     11.014: info: httpd/url_fota.c:133: flashed sector 0x82000
@@ -64,6 +67,11 @@ log snapshot follows.
 The applications `uart0.py` and `uart0/uart0` are provided for debugging output.
 `uart0/uart0` is for USB-UART bridges that don't inherently support non-standard
 baudrates.
+
+# Coding style
+- 80 character line limits (for multiple horizontally-split editor views)
+- Prefer to put function-scope variables at the top of the function; to help
+  facilitate calculation of stack space used by the function
 
 # License
 This software is freely available for non-commerical use, commerical use requires
