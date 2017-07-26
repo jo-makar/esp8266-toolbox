@@ -82,10 +82,33 @@ uint16_t httpd_outbuflen;
     httpd_outbuflen += srclen; \
 }
 
+#define HTTPD_OUTBUF_PRINTF(fmt, ...) { \
+    char buf[128]; \
+    size_t len; \
+    \
+    if ((len = os_snprintf(buf, sizeof(buf), fmt, ##__VA_ARGS__)) \
+            >= sizeof(buf)) { \
+        ERROR(HTTPD, "HTTPD_OUTBUF_PRINTF buf overflow\n") \
+        return 0; \
+    } \
+    \
+    if (len >= sizeof(httpd_outbuf)-httpd_outbuflen) { \
+        ERROR(HTTPD, "httpd_outbuf overflow\n") \
+        return 0; \
+    } \
+    \
+    /* Copy len+1 for the terminating null byte */ \
+    os_strncpy((char *)httpd_outbuf+httpd_outbuflen, buf, len+1); \
+    httpd_outbuflen += len; \
+}
+
 int httpd_process(HttpdClient *client);
 
 int httpd_url_404(HttpdClient *client);
 
 int httpd_url_fota(HttpdClient *client);
+
+int httpd_url_version(HttpdClient *client);
+int httpd_url_uptime(HttpdClient *client);
 
 #endif

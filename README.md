@@ -41,7 +41,8 @@ The Makefile target fota shows how this can be done with curl.
 Url | Description
 --- | -----------
 /fota/push | Push-based OTA updates (described above)
-/info | General system info: version, uptime, etc
+/uptime | System uptime
+/version | Application version
 
 # Quick start
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk

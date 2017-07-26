@@ -3,6 +3,12 @@
 
 #include <user_interface.h>
 
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 0
+#define VERSION_PATCH 0
+
+#define BUILD_DATETIME __DATE__ " " __TIME__
+
 #define SSID_PREFIX "esp"
 #define SSID_PASS "l0cK*It_Dwn"
 
