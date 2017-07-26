@@ -1,23 +1,21 @@
 # esp8266-toolbox
 Motley of servers and clients for the ESP8266 with signed OTA updates
 
-# Completed
+# Status
 - [x] HTTP server framework
-  - [x] Multiple simultaneous clients
-  - [ ] GET and POST methods
-- [ ] SHA256 implementation
-- [ ] Push-based OTA updates
-  - [ ] Triggered by HTTP POST on /fota/push
-
-# Forthcoming
-- Signed OTA updates
-- Pull-based OTA updates via HTTP GET
+  - Multiple simultaneous clients
+  - GET and POST methods
+- [x] SHA256 implementation
+- [x] Push-based OTA updates
+  - Triggered by HTTP POST on /fota/push
+- [ ] Signed OTA updates
+- [ ] Pull-based OTA updates via HTTP GET
   - Scheduled checks say every six hours by a dedicated task
   - The server url is to take an id param for device-specific apps/keys
-- Misc. sensor drivers (temp./humidity, light, motion, GPS, etc)
-- NTP client framework (provided by the SDK)
-- MQTT client framework
-- SMTP client framework
+- [ ] Misc. sensor drivers (temp./humidity, light, motion, GPS, etc)
+- [ ] NTP client framework (provided by the SDK)
+- [ ] MQTT client framework
+- [ ] SMTP client framework
 
 # OTA updates
 An unencoded binary is uploaded by HTTP POST to /fota/push.  The binary gets
@@ -32,7 +30,7 @@ The Makefile target fota shows how this can be done with curl.
 Url | Description
 --- | -----------
 /fota/push | Push-based OTA updates (described above)
-/info | General sys info: version, uptime, etc
+/info | General system info: version, uptime, etc
 
 # Quick start
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
