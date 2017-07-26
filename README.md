@@ -8,14 +8,25 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] SHA256 implementation
 - [x] Push-based OTA updates
   - Triggered by HTTP POST on /fota/push
+
 - [ ] Signed OTA updates
+  - Will need PKI impl and ideally use OpenSSL on host
+- [ ] Add WiFi urls: /wifi/{setup,info,scan?}
+- [ ] Add /logs to show last 100 log lines in a circular buffer
+- [ ] SMTP client framework for email/text alerts
+- [ ] Light, motion detection sensor drivers
+- [ ] Temp., humidity sensor drivers
+- [ ] Battery power circuit and monitoring code
+  - Use sleep modes for power conservation
+- [ ] Production board design
+
 - [ ] Pull-based OTA updates via HTTP GET
-  - Scheduled checks say every six hours by a dedicated task
-  - The server url is to take an id param for device-specific apps/keys
-- [ ] Misc. sensor drivers (temp./humidity, light, motion, GPS, etc)
+  - Scheduled checks say every six hours by timer
+  - The server url will use an id for device-specific apps/keys
+- [ ] Provide option of using HTTPS via SDK (espconn_secure_*)
+  - Limitation of only one server socket and one client
 - [ ] NTP client framework (provided by the SDK)
 - [ ] MQTT client framework
-- [ ] SMTP client framework
 
 # OTA updates
 An unencoded binary is uploaded by HTTP POST to /fota/push.  The binary gets
