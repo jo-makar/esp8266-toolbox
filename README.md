@@ -8,7 +8,6 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] SHA256 implementation
 - [x] Push-based OTA updates
   - Triggered by HTTP POST on /fota/push
-
 - [ ] Signed OTA updates
   - Will need PKI impl and ideally use OpenSSL on host
 - [ ] Add WiFi urls: /wifi/{setup,info,scan?}
@@ -20,6 +19,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
   - Use sleep modes for power conservation
 - [ ] Production board design
 
+# Later
 - [ ] Pull-based OTA updates via HTTP GET
   - Scheduled checks say every six hours by timer
   - The server url will use an id for device-specific apps/keys
