@@ -136,8 +136,8 @@ fota: eagle.app.flash.bin
 
 keys:
 	@echo OPENSSL GENRSA
-	test ! -e privkey.pem
-	@openssl genrsa -out privkey.pem 512
-	@openssl rsa -in privkey.pem -out pubkey.pem -pubout
-	@openssl rsa -in pubkey.pem -pubin -text -noout
-	@# FIXME STOPPED crypto/rsapubkey.py privkey.pem >crypto/key.c
+	test ! -e crypto/privkey.pem
+	@openssl genrsa -out crypto/privkey.pem 512
+	@openssl rsa -in crypto/privkey.pem -out crypto/pubkey.pem -pubout
+	@openssl rsa -in crypto/pubkey.pem -pubin -text -noout
+	@crypto/rsapubkey.py crypto/privkey.pem | tee crypto/pubkey.c

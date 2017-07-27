@@ -8,6 +8,8 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] SHA256 implementation
 - [x] Push-based OTA updates
   - Triggered by HTTP POST on /fota/push
+- [ ] Big integer implementation
+- [ ] RSA encryption/decryption implementation
 
 FIXME Rewrite the next two sections & work out the minimum needed
 
@@ -50,6 +52,7 @@ Url | Description
 # Quick start
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
 - Modify the variables at the top of the Makefile if necessary
+- Run `make keys` to generate the OTA signing keys
 - Run `make` to build the application binary
 - Breadboard a circuit (refer to /hw for a development schematic)
 - Power the circuit and connect via a USB-UART bridge

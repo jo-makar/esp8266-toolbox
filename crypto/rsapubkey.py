@@ -59,5 +59,34 @@ if __name__ == '__main__':
     privkey, rest = decode(der_encoded, asn1Spec=RsaPrivkey())
     assert rest == ''
 
-    print '%x' % privkey['modulus']
-    print '%x' % privkey['publicExponent']
+    #
+    # Generate the crypto/pubkey.c file
+    #
+
+    def tobigint(val, name):
+        s = '%x' % val
+        if len(s) % 2 == 1:
+            s = '0' + s
+
+        print 'ICACHE_RODATA_ATTR const Bigint %s = {' % name
+        print '    .sign = 0,'
+        print '    .used = %u,' % (len(s)/2,)
+        print '    .data = {',
+
+        j = 0
+        for b in [s[i:i+2] for i in range(0, len(s), 2)][::-1]:
+            print '0x%s,' % b,
+            j += 1
+            if j % 10 == 0:
+                print
+                print '             ',
+        print
+        print '            }'
+        print '};'
+        print
+
+    print '#include "bigint.h"'
+    print
+
+    tobigint(privkey['modulus'], 'pubkey_mod')
+    tobigint(privkey['publicExponent'], 'pubkey_exp')
