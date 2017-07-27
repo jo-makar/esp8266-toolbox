@@ -3,5 +3,8 @@ app.elf
 
 uart0/uart0
 
+privkey.pem
+pubkey.pem
+
 *.o
 *.d

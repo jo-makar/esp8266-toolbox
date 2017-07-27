@@ -133,3 +133,11 @@ fota: eagle.app.flash.bin
 	@echo HTTP_UPDATE
 	@sha256sum $< | awk '{print $$1}'
 	@curl --data-binary @$< http://192.168.4.1/fota/push; echo
+
+keys:
+	@echo OPENSSL GENRSA
+	test ! -e privkey.pem
+	@openssl genrsa -out privkey.pem 512
+	@openssl rsa -in privkey.pem -out pubkey.pem -pubout
+	@openssl rsa -in pubkey.pem -pubin -text -noout
+	@# FIXME STOPPED crypto/rsapubkey.py privkey.pem >crypto/key.c
