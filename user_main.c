@@ -14,6 +14,20 @@
 #endif
 
 ICACHE_FLASH_ATTR void user_init() {
+    /* FIXME Remove */
+    {
+        #include "crypto/bigint.h"
+
+        Bigint q, r, n, d;
+
+        bigint_fromhex(&n, "10");
+        bigint_fromhex(&d, "04");
+        bigint_divmod(&q, &r, &n, &d);
+
+        os_printf("q = "); bigint_print(&q); os_printf("\n");
+        os_printf("r = "); bigint_print(&r); os_printf("\n");
+    }
+
     /*
      * The SDK function system_get_time() overflows about every 71 mins.
      * This timer ensure that overflow is handled cleanly,

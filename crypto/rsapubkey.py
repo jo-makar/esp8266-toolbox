@@ -69,7 +69,8 @@ if __name__ == '__main__':
             s = '0' + s
 
         print 'ICACHE_RODATA_ATTR const Bigint %s = {' % name
-        print '    .used = %u,' % (len(s)/2,)
+        print '    .bytes = %u,' % (len(s)/2,)
+        print '    .bits = 0,'
         print '    .data = {',
 
         j = 0
