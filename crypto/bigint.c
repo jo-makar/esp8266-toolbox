@@ -7,6 +7,28 @@
 
 static int8_t hexchar(char c);
 
+#define BIGINT_LEFTSHIFT(x) { \
+    uint16_t i; \
+    uint8_t bit, lastbit=0; \
+    \
+    for (i=0; i<(x)->bytes; i++) { \
+        bit = (x)->data[i] >> 7; \
+        (x)->data[i] = ((x)->data[i]<<1) | lastbit; \
+        lastbit = bit; \
+    } \
+    \
+    (x)->data[i] = ((x)->data[i]<<1) | lastbit; \
+    \
+    if (++(x)->bits == 8) { \
+        (x)->bytes++; \
+        (x)->bits = 0; \
+        if ((x)->bytes >= DATA_MAXLEN-1) { \
+            ERROR(MAIN, "data overflow\n") \
+            return 1; \
+        } \
+    } \
+}
+
 ICACHE_FLASH_ATTR void bigint_zero(Bigint *i) {
     i->bytes = 0;
     i->bits = 1;
@@ -186,12 +208,29 @@ ICACHE_FLASH_ATTR int bigint_add(Bigint *s, const Bigint *a, const Bigint *b) {
 }
 
 ICACHE_FLASH_ATTR int bigint_mult(Bigint *p, const Bigint *a, const Bigint *b) {
+    Bigint t, pt;
+
+    uint32_t idx;
+    uint32_t i;
+
     if (p == a || p == b) {
         ERROR(MAIN, "assert p!=a && p!=b\n")
         return 1;
     }
 
-    /* FIXME STOPPED */
+    bigint_zero(p);
+
+    for (idx=0; idx<(uint32_t)BIGINT_BITS(b); idx++) {
+        if (BIGINT_BIT(b, idx)) {
+            bigint_copy(&t, a);
+            for (i=0; i<idx; i++)
+                BIGINT_LEFTSHIFT(&t)
+
+            /* p += t */
+            bigint_copy(&pt, p);
+            bigint_add(p, &pt, &t);
+        }
+    }
 
     return 0;
 }
@@ -265,29 +304,6 @@ ICACHE_FLASH_ATTR int bigint_divmod(Bigint *q, Bigint *r,
                 break;
             }
         /* assert j != BIGINT_BITS(&dc), because d != 0 */
-    }
-
-
-    #define BIGINT_LEFTSHIFT(x) { \
-        uint16_t i; \
-        uint8_t bit, lastbit=0; \
-        \
-        for (i=0; i<x->bytes; i++) { \
-            bit = x->data[i] >> 7; \
-            x->data[i] = (x->data[i]<<1) | lastbit; \
-            lastbit = bit; \
-        } \
-        \
-        x->data[i] = (x->data[i]<<1) | lastbit; \
-        \
-        if (++x->bits == 8) { \
-            x->bytes++; \
-            x->bits = 0; \
-            if (x->bytes >= DATA_MAXLEN-1) { \
-                ERROR(MAIN, "data overflow\n") \
-                return 1; \
-            } \
-        } \
     }
 
     for (i=BIGINT_BITS(n)-1; i>=0; i--) {

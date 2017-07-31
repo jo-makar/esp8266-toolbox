@@ -18,14 +18,13 @@ ICACHE_FLASH_ATTR void user_init() {
     {
         #include "crypto/bigint.h"
 
-        Bigint q, r, n, d;
+        Bigint p, a, b;
 
-        bigint_fromhex(&n, "10");
-        bigint_fromhex(&d, "04");
-        bigint_divmod(&q, &r, &n, &d);
+        bigint_fromhex(&a, "2b");
+        bigint_fromhex(&b, "0a");
+        bigint_mult(&p, &a, &b);
 
-        os_printf("q = "); bigint_print(&q); os_printf("\n");
-        os_printf("r = "); bigint_print(&r); os_printf("\n");
+        os_printf("p = "); bigint_print(&p); os_printf("\n");
     }
 
     /*

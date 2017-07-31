@@ -43,12 +43,4 @@ int bigint_divmod(Bigint *q, Bigint *r, const Bigint *n, const Bigint *d);
 /* x = (a**b) % n */
 int bigint_expmod(Bigint *x, const Bigint *a, const Bigint *b, const Bigint *n);
 
-/*
- * TODO Add support for signed ints
- *      bigint_sub => a - b
- *      bigint_mult => a * b
- *      bigint_addmod => (a + b) % n
- *      bigint_multmod => (a * b) % n
- */
-
 #endif
