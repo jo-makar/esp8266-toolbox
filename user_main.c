@@ -18,13 +18,17 @@ ICACHE_FLASH_ATTR void user_init() {
     {
         #include "crypto/bigint.h"
 
-        Bigint p, a, b;
+        extern Bigint pubkey_mod;
+        extern Bigint pubkey_exp;
 
-        bigint_fromhex(&a, "2b");
-        bigint_fromhex(&b, "0a");
-        bigint_mult(&p, &a, &b);
+        Bigint clear, cipher;
 
-        os_printf("p = "); bigint_print(&p); os_printf("\n");
+        bigint_fromhex(&clear, "cafebabe");
+        /* FIXME assert len(clear) < len(pubkey_mod) */
+
+        bigint_expmod(&cipher, &clear, &pubkey_exp, &pubkey_mod);
+
+        os_printf("cipher = "); bigint_print(&cipher); os_printf("\n");
     }
 
     /*

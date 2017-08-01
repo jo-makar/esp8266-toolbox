@@ -6,7 +6,7 @@
 typedef struct {
     uint16_t bytes;
     uint8_t bits;
-    #define DATA_MAXLEN 128
+    #define DATA_MAXLEN 100
     uint8_t data[DATA_MAXLEN];
 } Bigint;
 
@@ -31,10 +31,9 @@ int bigint_iszero(const Bigint *i);
 /* -1 if i<j, 0 if i=j, 1 if i>j */
 int bigint_cmp(const Bigint *i, const Bigint *j);
 
-/* s = a + b */
 int bigint_add(Bigint *s, const Bigint *a, const Bigint *b);
+int bigint_addto(Bigint *s, const Bigint *a);
 
-/* p = a * b */
 int bigint_mult(Bigint *p, const Bigint *a, const Bigint *b);
 
 /* q = n / d, r = n % d */

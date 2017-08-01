@@ -5,6 +5,13 @@
 #include "bigint.h"
 #include "missing-decls.h"
 
+/*
+ * To avoid using stack space define some temp variables here.
+ * The t variables are for top-level functions, u's for nested functions.
+ * Ie u1 and u2 are used in bigint_divmod() which is called by bigint_expmod().
+ */
+static Bigint t1, t2, t3, t4, u1, u2;
+
 static int8_t hexchar(char c);
 
 #define BIGINT_LEFTSHIFT(x) { \
@@ -29,6 +36,27 @@ static int8_t hexchar(char c);
     } \
 }
 
+ICACHE_FLASH_ATTR void bigint_norm(Bigint *i) {
+    int32_t idx;
+
+    if (i->bits > 0) {
+        if ((i->data[i->bytes] & ((1<<i->bits)-1)) != 0)
+            return;
+        i->bits = 0;
+    }
+
+    for (idx=i->bytes-1; idx>=0; idx--) {
+        if (i->data[idx] != 0)
+            break;
+    }
+    i->bytes = idx + 1;
+
+    if (i->bytes == 0)
+        i->bits = 1;
+
+    return;
+}
+
 ICACHE_FLASH_ATTR void bigint_zero(Bigint *i) {
     i->bytes = 0;
     i->bits = 1;
@@ -40,6 +68,7 @@ ICACHE_FLASH_ATTR void bigint_copy(Bigint *d, const Bigint *s) {
     d->bits = s->bits;
     os_bzero(d->data, sizeof(d->data));
     os_memcpy(d->data, s->data, d->bytes + (d->bits>0 ? 1 : 0));
+
 }
 
 ICACHE_FLASH_ATTR int bigint_fromhex(Bigint *i, const char *s) {
@@ -207,11 +236,66 @@ ICACHE_FLASH_ATTR int bigint_add(Bigint *s, const Bigint *a, const Bigint *b) {
     return 0;
 }
 
-ICACHE_FLASH_ATTR int bigint_mult(Bigint *p, const Bigint *a, const Bigint *b) {
-    Bigint t, pt;
+ICACHE_FLASH_ATTR int bigint_addto(Bigint *s, const Bigint *a) {
+    uint32_t i;
+    uint32_t bits;
+    uint8_t carry = 0;
+    uint8_t n;
 
+    if (s == a) {
+        ERROR(MAIN, "assert s != a\n")
+        return 1;
+    }
+
+    bits = BIGINT_BITS(a);
+    for (i=0; i<bits; i++) {
+        n = BIGINT_BIT(s, i) + BIGINT_BIT(a, i) + carry;
+        if (n == 3) {
+            BIGINT_SETBIT(s, i)
+            carry = 1;
+        } else if (n == 2) {
+            BIGINT_CLRBIT(s, i)
+            carry = 1;
+        } else if (n == 1) {
+            BIGINT_SETBIT(s, i)
+            carry = 0;
+        } else /* n == 0 */ {
+            BIGINT_CLRBIT(s, i)
+            carry = 0;
+        }
+
+        if (i == (uint32_t)BIGINT_BITS(s)) {
+            if (++s->bits == 8) {
+                s->bytes++;
+                s->bits = 0;
+                if (s->bytes >= DATA_MAXLEN-1) {
+                    ERROR(MAIN, "data overflow\n")
+                    return 1;
+                }
+            }
+        }
+    }
+
+    if (carry) {
+        BIGINT_SETBIT(s, i)
+
+        if (++s->bits == 8) {
+            s->bytes++;
+            s->bits = 0;
+            if (s->bytes >= DATA_MAXLEN-1) {
+                ERROR(MAIN, "data overflow\n")
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+ICACHE_FLASH_ATTR int bigint_mult(Bigint *p, const Bigint *a, const Bigint *b) {
     uint32_t idx;
     uint32_t i;
+    int rv;
 
     if (p == a || p == b) {
         ERROR(MAIN, "assert p!=a && p!=b\n")
@@ -221,14 +305,16 @@ ICACHE_FLASH_ATTR int bigint_mult(Bigint *p, const Bigint *a, const Bigint *b) {
     bigint_zero(p);
 
     for (idx=0; idx<(uint32_t)BIGINT_BITS(b); idx++) {
-        if (BIGINT_BIT(b, idx)) {
-            bigint_copy(&t, a);
-            for (i=0; i<idx; i++)
-                BIGINT_LEFTSHIFT(&t)
+        if (idx > 0 && idx % 10 == 0)
+            system_soft_wdt_feed();
 
-            /* p += t */
-            bigint_copy(&pt, p);
-            bigint_add(p, &pt, &t);
+        if (BIGINT_BIT(b, idx)) {
+            bigint_copy(&u1, a);
+            for (i=0; i<idx; i++)
+                BIGINT_LEFTSHIFT(&u1)
+
+            if ((rv = bigint_addto(p, &u1)) > 0)
+                return rv;
         }
     }
 
@@ -243,7 +329,7 @@ ICACHE_FLASH_ATTR int bigint_divmod(Bigint *q, Bigint *r,
      * if D = 0 then error end   -- Division by zero
      * Q := 0                    -- Initialize quotient and remainder to zero
      * R := 0                     
-     * for i := n − 1 .. 0 do    -- Where n is number of bits in N
+     * for i := n − 1 .. 0 do    -- Where n is the number of bits in N
      *   R := R << 1             -- Left-shift R by 1 bit
      *   R(0) := N(i)            -- Set the least-significant bit of R equal to
      *                           -- bit i of the numerator
@@ -255,8 +341,7 @@ ICACHE_FLASH_ATTR int bigint_divmod(Bigint *q, Bigint *r,
      */
 
     int32_t i;
-    Bigint dc;
-    Bigint s;
+    int rv;
 
     if (bigint_iszero(d)) {
         WARNING(MAIN, "division by zero\n")
@@ -284,39 +369,50 @@ ICACHE_FLASH_ATTR int bigint_divmod(Bigint *q, Bigint *r,
         int32_t k;
         uint32_t bits;
 
-        bigint_copy(&dc, d);
+        bigint_copy(&u1, d);
 
         /* Flip the bits */
-        for (i=0; i<dc.bytes; i++)
-            dc.data[i] = ~dc.data[i];
-        if (dc.bits > 0) {
-            dc.data[i] = ~dc.data[i];
-            dc.data[i] &= (1<<dc.bits) - 1;
+        for (i=0; i<u1.bytes; i++)
+            u1.data[i] = ~u1.data[i];
+        if (u1.bits > 0) {
+            u1.data[i] = ~u1.data[i];
+            u1.data[i] &= (1<<u1.bits) - 1;
         }
 
         /* Add one */
-        bits = BIGINT_BITS(&dc);
+        bits = BIGINT_BITS(&u1);
         for (j=0; j<bits; j++)
-            if (BIGINT_BIT(&dc, j) == 0) {
-                BIGINT_SETBIT(&dc, j)
+            if (BIGINT_BIT(&u1, j) == 0) {
+                BIGINT_SETBIT(&u1, j)
                 for (k=j-1; k>=0; k--)
-                    BIGINT_CLRBIT(&dc, k)
+                    BIGINT_CLRBIT(&u1, k)
                 break;
             }
-        /* assert j != BIGINT_BITS(&dc), because d != 0 */
+        /* assert j != BIGINT_BITS(&u1), because d != 0 */
     }
 
     for (i=BIGINT_BITS(n)-1; i>=0; i--) {
+        if (i % 10 == 0)
+            system_soft_wdt_feed();
+
         BIGINT_LEFTSHIFT(r)
+        if (BIGINT_BITS(r) > BIGINT_BITS(d)) {
+            r->bytes = d->bytes;
+            r->bits = d->bits;
+        }
 
         r->data[0] |= BIGINT_BIT(n, i);
 
         if (bigint_cmp(r, d) >= 0) {
-            /* r = r + (-d) */
-            bigint_add(&s, r, &dc);
-            s.bytes = r->bytes;
-            s.bits = r->bits;
-            bigint_copy(r, &s);
+            /*
+             * r = r + (-d)
+             * Also maintain length of bits in r
+             */
+            if ((rv = bigint_add(&u2, r, &u1)) > 0)
+                return rv;
+            u2.bytes = r->bytes;
+            u2.bits = r->bits;
+            bigint_copy(r, &u2);
 
             BIGINT_SETBIT(q, i)
         }
@@ -336,12 +432,65 @@ ICACHE_FLASH_ATTR int bigint_divmod(Bigint *q, Bigint *r,
 
 ICACHE_FLASH_ATTR int bigint_expmod(Bigint *x, const Bigint *a,
                                     const Bigint *b, const Bigint *n) {
+    /*
+     * X := (A^B) % N
+     *
+     * X := 1
+     * for i := b - 2 .. 0 do       -- Where b is the number of bits in B
+     *   X := (X^2) % N
+     *   if B(i) = 1 then
+     *     X := (X*A) % N
+     *   end
+     * end
+     */
+
+    int32_t i;
+    int rv;
+ 
     if (x == a || x == b || x == n) {
         ERROR(MAIN, "assert x!=a && x!=b && x!=n\n")
         return 1;
     }
 
-    /* FIXME STOPPED */
+    bigint_zero(x);
+    BIGINT_SETBIT(x, 0)
+
+    /*
+     * Calculate x = (t4^b) % n where t4 = a%n
+     * to reduce storage requirements
+     */
+    if ((rv = bigint_divmod(&t3, &t4, a, n)) > 0)
+        return rv;
+    bigint_norm(&t4);
+
+    for (i=BIGINT_BITS(b)-2; i>=0; i--) {
+        DEBUG(MAIN, "bigint_expmod: i=%u\n", i)
+
+        /* x = x**2 */
+        bigint_copy(&t1, x);
+        if ((rv = bigint_mult(&t2, x, &t1)) > 0)
+            return rv;
+        bigint_copy(x, &t2);
+
+        /* x %= n */
+        if ((rv = bigint_divmod(&t1, &t2, x, n)) > 0)
+            return rv;
+        bigint_norm(&t2);
+        bigint_copy(x, &t2);
+
+        if (BIGINT_BIT(b, i) == 1) {
+            /* x *= t4 */
+            if ((rv = bigint_mult(&t1, x, &t4)) > 0)
+                return rv;
+            bigint_copy(x, &t1);
+
+            /* x %= n */
+            if ((rv = bigint_divmod(&t1, &t2, x, n)) > 0)
+                return rv;
+            bigint_norm(&t2);
+            bigint_copy(x, &t2);
+        }
+    }
 
     return 0;
 }
