@@ -8,7 +8,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] SHA256 implementation
 - [x] Push-based OTA updates
   - Triggered by HTTP POST on /fota/push
-- [ ] Big integer implementation
+- [x] Big integer implementation
   - Adjustable max length
   - Unsigned operations sufficient for most PKI
 - [ ] RSA encryption/decryption implementation

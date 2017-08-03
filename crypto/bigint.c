@@ -1,498 +1,124 @@
-#include <sys/param.h>
-#include <osapi.h>
+#if STANDALONE
+    #include <sys/param.h>
+    #include <stdio.h>
+    #include <string.h>
+    #include <strings.h>
 
-#include "../log.h"
+    #define ICACHE_FLASH_ATTR /**/
+#else
+    #include <sys/param.h>
+    #include <osapi.h>
+
+    #include "../log.h"
+    #include "missing-decls.h"
+#endif
+
 #include "bigint.h"
-#include "missing-decls.h"
 
-/*
- * To avoid using stack space define some temp variables here.
- * The t variables are for top-level functions, u's for nested functions.
- * Ie u1 and u2 are used in bigint_divmod() which is called by bigint_expmod().
- */
-static Bigint t1, t2, t3, t4, u1, u2;
+/* To save stack space use temporary variable in BSS instead */
+Bigint mul_pt, mul_at;
+Bigint div_qt, div_rt, div_bc;
+Bigint expmod_xt, expmod_r;
 
-static int8_t hexchar(char c);
+#define BITS(i) (size_t)((i)->bytes * 8 + (i)->bits)
 
-#define BIGINT_LEFTSHIFT(x) { \
-    uint16_t i; \
-    uint8_t bit, lastbit=0; \
+#undef BIT
+#define BIT(i, n) \
+    ((size_t)(n) < BITS(i) \
+         ? (((i)->data[(n) / 8] >> ((n) % 8)) & 0x01) \
+         : 0)
+
+#define SET_BIT(i, n) { \
+    if ((size_t)(n) < BITS(i)) \
+        (i)->data[(n) / 8] |= 1 << ((n) % 8); \
+}
+
+#define CLR_BIT(i, n) { \
+    if ((size_t)(n) < BITS(i)) \
+        (i)->data[(n) / 8] &= ~(1 << ((n) % 8)); \
+}
+
+#define LEFT_SHIFT(i) { \
+    uint16_t j; \
+    uint8_t b, lb; \
     \
-    for (i=0; i<(x)->bytes; i++) { \
-        bit = (x)->data[i] >> 7; \
-        (x)->data[i] = ((x)->data[i]<<1) | lastbit; \
-        lastbit = bit; \
+    lb = 0; \
+    for (j = 0; j < (i)->bytes; j++) { \
+        b = ((i)->data[j] >> 7) & 0x01; \
+        (i)->data[j] = ((i)->data[j] << 1) | lb; \
+        lb = b; \
     } \
     \
-    (x)->data[i] = ((x)->data[i]<<1) | lastbit; \
+    (i)->data[j] = ((i)->data[j] << 1) | lb; \
     \
-    if (++(x)->bits == 8) { \
-        (x)->bytes++; \
-        (x)->bits = 0; \
-        if ((x)->bytes >= DATA_MAXLEN-1) { \
-            ERROR(MAIN, "data overflow\n") \
+    if (++(i)->bits == 8) { \
+        (i)->bytes++; \
+        (i)->bits = 0; \
+        if ((i)->bytes >= DATA_MAXLEN - 1) { \
+            /* \
+             * #if !STANDALONE \
+             * ERROR(MAIN, "data overflow\n") \
+             * #endif \
+             */ \
             return 1; \
         } \
     } \
 }
 
-ICACHE_FLASH_ATTR void bigint_norm(Bigint *i) {
-    int32_t idx;
+#define TWOS_COMP(i) { \
+    uint16_t j; \
+    uint32_t b, k; \
+    int32_t l; \
+    \
+    for (j = 0; j < (i)->bytes; j++) \
+        (i)->data[j] = ~(i)->data[j]; \
+    if ((i)->bits > 0) \
+        (i)->data[j] = (~(i)->data[j]) & ((1 << (i)->bits) - 1); \
+    \
+    b = BITS(i); \
+    for (k = 0; k < b; k++) \
+        if (BIT(i, k) == 0) { \
+            SET_BIT(i, k) \
+            for (l = k - 1; l >= 0; l--) \
+                CLR_BIT(i, l) \
+            break; \
+        } \
+}
 
+ICACHE_FLASH_ATTR void normalize(Bigint *i) {
+    int32_t j;
+    size_t u;
+
+    /* Cleanup unused bits/bytes */
+
+    if (i->bits > 0)
+        i->data[i->bytes] &= (1 << i->bits) - 1;
+
+    u = i->bytes + (i->bits > 0 ? 1 : 0);
+    bzero(i->data + u, DATA_MAXLEN - u);
+
+    /* Normalization proper */
+    
     if (i->bits > 0) {
-        if ((i->data[i->bytes] & ((1<<i->bits)-1)) != 0)
+        if ((i->data[i->bytes] & ((1 << i->bits) - 1)) != 0)
             return;
         i->bits = 0;
     }
-
-    for (idx=i->bytes-1; idx>=0; idx--) {
-        if (i->data[idx] != 0)
+    
+    for (j = i->bytes - 1; j >= 0; j--) {
+        if (i->data[j] != 0)
             break;
     }
-    i->bytes = idx + 1;
-
+    i->bytes = j + 1;
+    
     if (i->bytes == 0)
         i->bits = 1;
-
-    return;
 }
 
 ICACHE_FLASH_ATTR void bigint_zero(Bigint *i) {
     i->bytes = 0;
     i->bits = 1;
-    os_bzero(i->data, sizeof(i->data));
-}
-
-ICACHE_FLASH_ATTR void bigint_copy(Bigint *d, const Bigint *s) {
-    d->bytes = s->bytes;
-    d->bits = s->bits;
-    os_bzero(d->data, sizeof(d->data));
-    os_memcpy(d->data, s->data, d->bytes + (d->bits>0 ? 1 : 0));
-
-}
-
-ICACHE_FLASH_ATTR int bigint_fromhex(Bigint *i, const char *s) {
-    size_t len = os_strlen(s);
-    int j;
-    int8_t h, l;
-
-    i->bytes = 0;
-    i->bits = 0;
-    os_bzero(i->data, sizeof(i->data));
-
-    for (j=len-1; j>=1; j-=2) {
-        if ((l = hexchar(s[j])) == -1) {
-            WARNING(MAIN, "invalid hex char\n")
-            return 1;
-        }
-        if ((h = hexchar(s[j-1])) == -1) {
-            WARNING(MAIN, "invalid hex char\n")
-            return 1;
-        }
-
-        i->data[i->bytes++] = (h<<4) | l;
-        if (i->bytes >= DATA_MAXLEN-1) { 
-            ERROR(MAIN, "data overflow\n")
-            return 1;
-        }
-    }
-
-    if (j == 0) {
-        if ((l = hexchar(s[j])) == -1) {
-            WARNING(MAIN, "invalid hex char\n")
-            return 1;
-        }
-        h = 0;
-
-        i->data[i->bytes++] = (h<<4) | l;
-        if (i->bytes >= DATA_MAXLEN-1) { 
-            ERROR(MAIN, "data overflow\n")
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-ICACHE_FLASH_ATTR void bigint_print(const Bigint *i) {
-    int32_t j;
-
-    os_printf("%u %u ", i->bits, i->bytes);
-
-    if (i->bits > 0)
-        os_printf("%02x", i->data[i->bytes] & ((1<<i->bits)-1));
-
-    for (j=i->bytes-1; j>=0; j--)
-        os_printf("%02x", i->data[j]);
-}
-
-ICACHE_FLASH_ATTR int bigint_iszero(const Bigint *i) {
-    uint16_t j;
-    
-    if (BIGINT_BITS(i) == 0)
-        return 0;
-
-    for (j=0; j<i->bytes; j++)
-        if (i->data[j] > 0)
-            return 0;
-
-    if (i->bits > 0)
-        if (i->data[i->bytes] & ((1<<(i->bits+1))-1))
-            return 0;
-
-    return 1;
-}
-
-ICACHE_FLASH_ATTR int bigint_cmp(const Bigint *i, const Bigint *j) {
-    int32_t idx;
-    uint8_t l, r;
-
-    if (BIGINT_BITS(i) > BIGINT_BITS(j)) {
-        for (idx=BIGINT_BITS(i)-1; idx>=BIGINT_BITS(j); idx--)
-            if (BIGINT_BIT(i, idx) == 1)
-                return 1;
-    } else if (BIGINT_BITS(i) < BIGINT_BITS(j)) {
-        for (idx=BIGINT_BITS(j)-1; idx>=BIGINT_BITS(i); idx--)
-            if (BIGINT_BIT(j, idx) == 1)
-                return -1;
-    }
-    else
-        idx = BIGINT_BITS(i) - 1;
-
-    /* Compare the leading bits */
-    for (; idx%8!=0 && idx>=0; idx--) {
-        l = BIGINT_BIT(i, idx);
-        r = BIGINT_BIT(j, idx);
-
-        if (l > r)
-            return 1;
-        else if (l < r)
-            return -1;
-    }
-
-    /* Compare the remaining bytes */
-    for (; idx/8>=0; idx-=8) {
-        if (i->data[idx] > j->data[idx])
-            return 1;
-        else if (i->data[idx] < j->data[idx])
-            return -1;
-    }
-
-    return 0;
-}
-
-ICACHE_FLASH_ATTR int bigint_add(Bigint *s, const Bigint *a, const Bigint *b) {
-    uint32_t i;
-    uint32_t bits = MAX(BIGINT_BITS(a), BIGINT_BITS(b));
-    uint8_t carry = 0;
-    uint8_t n;
-
-    if (s == a || s == b) {
-        ERROR(MAIN, "assert s!=a && s!=b\n")
-        return 1;
-    }
-
-    bigint_zero(s);
-
-    for (i=0; i<bits; i++) {
-        n = BIGINT_BIT(a, i) + BIGINT_BIT(b, i) + carry;
-        if (n == 3) {
-            BIGINT_SETBIT(s, i)
-            carry = 1;
-        } else if (n == 2) {
-            BIGINT_CLRBIT(s, i)
-            carry = 1;
-        } else if (n == 1) {
-            BIGINT_SETBIT(s, i)
-            carry = 0;
-        } else /* n == 0 */ {
-            BIGINT_CLRBIT(s, i)
-            carry = 0;
-        }
-
-        if (++s->bits == 8) {
-            s->bytes++;
-            s->bits = 0;
-            if (s->bytes >= DATA_MAXLEN-1) {
-                ERROR(MAIN, "data overflow\n")
-                return 1;
-            }
-        }
-    }
-
-    if (carry) {
-        BIGINT_SETBIT(s, i)
-
-        if (++s->bits == 8) {
-            s->bytes++;
-            s->bits = 0;
-            if (s->bytes >= DATA_MAXLEN-1) {
-                ERROR(MAIN, "data overflow\n")
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-ICACHE_FLASH_ATTR int bigint_addto(Bigint *s, const Bigint *a) {
-    uint32_t i;
-    uint32_t bits;
-    uint8_t carry = 0;
-    uint8_t n;
-
-    if (s == a) {
-        ERROR(MAIN, "assert s != a\n")
-        return 1;
-    }
-
-    bits = BIGINT_BITS(a);
-    for (i=0; i<bits; i++) {
-        n = BIGINT_BIT(s, i) + BIGINT_BIT(a, i) + carry;
-        if (n == 3) {
-            BIGINT_SETBIT(s, i)
-            carry = 1;
-        } else if (n == 2) {
-            BIGINT_CLRBIT(s, i)
-            carry = 1;
-        } else if (n == 1) {
-            BIGINT_SETBIT(s, i)
-            carry = 0;
-        } else /* n == 0 */ {
-            BIGINT_CLRBIT(s, i)
-            carry = 0;
-        }
-
-        if (i == (uint32_t)BIGINT_BITS(s)) {
-            if (++s->bits == 8) {
-                s->bytes++;
-                s->bits = 0;
-                if (s->bytes >= DATA_MAXLEN-1) {
-                    ERROR(MAIN, "data overflow\n")
-                    return 1;
-                }
-            }
-        }
-    }
-
-    if (carry) {
-        BIGINT_SETBIT(s, i)
-
-        if (++s->bits == 8) {
-            s->bytes++;
-            s->bits = 0;
-            if (s->bytes >= DATA_MAXLEN-1) {
-                ERROR(MAIN, "data overflow\n")
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-ICACHE_FLASH_ATTR int bigint_mult(Bigint *p, const Bigint *a, const Bigint *b) {
-    uint32_t idx;
-    uint32_t i;
-    int rv;
-
-    if (p == a || p == b) {
-        ERROR(MAIN, "assert p!=a && p!=b\n")
-        return 1;
-    }
-
-    bigint_zero(p);
-
-    for (idx=0; idx<(uint32_t)BIGINT_BITS(b); idx++) {
-        if (idx > 0 && idx % 10 == 0)
-            system_soft_wdt_feed();
-
-        if (BIGINT_BIT(b, idx)) {
-            bigint_copy(&u1, a);
-            for (i=0; i<idx; i++)
-                BIGINT_LEFTSHIFT(&u1)
-
-            if ((rv = bigint_addto(p, &u1)) > 0)
-                return rv;
-        }
-    }
-
-    return 0;
-}
-
-ICACHE_FLASH_ATTR int bigint_divmod(Bigint *q, Bigint *r,
-                                    const Bigint *n, const Bigint *d) {
-    /*
-     * Q := N / D, R := N % D
-     *
-     * if D = 0 then error end   -- Division by zero
-     * Q := 0                    -- Initialize quotient and remainder to zero
-     * R := 0                     
-     * for i := n − 1 .. 0 do    -- Where n is the number of bits in N
-     *   R := R << 1             -- Left-shift R by 1 bit
-     *   R(0) := N(i)            -- Set the least-significant bit of R equal to
-     *                           -- bit i of the numerator
-     *   if R >= D then
-     *     R := R − D
-     *     Q(i) := 1
-     *   end
-     * end
-     */
-
-    int32_t i;
-    int rv;
-
-    if (bigint_iszero(d)) {
-        WARNING(MAIN, "division by zero\n")
-        return 1;
-    }
-
-    if (q == r || q == n || q == d) {
-        ERROR(MAIN, "assert q!=r && q!=n && q!=d\n")
-        return 1;
-    }
-    if (r == n || r == d) {
-        ERROR(MAIN, "assert r!=n && r!=d\n")
-        return 1;
-    }
-
-    bigint_zero(q);
-    bigint_zero(r);
-
-    /*
-     * Two's complement
-     */
-    {
-        uint16_t i;
-        uint32_t j;
-        int32_t k;
-        uint32_t bits;
-
-        bigint_copy(&u1, d);
-
-        /* Flip the bits */
-        for (i=0; i<u1.bytes; i++)
-            u1.data[i] = ~u1.data[i];
-        if (u1.bits > 0) {
-            u1.data[i] = ~u1.data[i];
-            u1.data[i] &= (1<<u1.bits) - 1;
-        }
-
-        /* Add one */
-        bits = BIGINT_BITS(&u1);
-        for (j=0; j<bits; j++)
-            if (BIGINT_BIT(&u1, j) == 0) {
-                BIGINT_SETBIT(&u1, j)
-                for (k=j-1; k>=0; k--)
-                    BIGINT_CLRBIT(&u1, k)
-                break;
-            }
-        /* assert j != BIGINT_BITS(&u1), because d != 0 */
-    }
-
-    for (i=BIGINT_BITS(n)-1; i>=0; i--) {
-        if (i % 10 == 0)
-            system_soft_wdt_feed();
-
-        BIGINT_LEFTSHIFT(r)
-        if (BIGINT_BITS(r) > BIGINT_BITS(d)) {
-            r->bytes = d->bytes;
-            r->bits = d->bits;
-        }
-
-        r->data[0] |= BIGINT_BIT(n, i);
-
-        if (bigint_cmp(r, d) >= 0) {
-            /*
-             * r = r + (-d)
-             * Also maintain length of bits in r
-             */
-            if ((rv = bigint_add(&u2, r, &u1)) > 0)
-                return rv;
-            u2.bytes = r->bytes;
-            u2.bits = r->bits;
-            bigint_copy(r, &u2);
-
-            BIGINT_SETBIT(q, i)
-        }
-
-        if (++q->bits == 8) {
-            q->bytes++;
-            q->bits = 0;
-            if (q->bytes >= DATA_MAXLEN-1) {
-                ERROR(MAIN, "data overflow\n")
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-ICACHE_FLASH_ATTR int bigint_expmod(Bigint *x, const Bigint *a,
-                                    const Bigint *b, const Bigint *n) {
-    /*
-     * X := (A^B) % N
-     *
-     * X := 1
-     * for i := b - 2 .. 0 do       -- Where b is the number of bits in B
-     *   X := (X^2) % N
-     *   if B(i) = 1 then
-     *     X := (X*A) % N
-     *   end
-     * end
-     */
-
-    int32_t i;
-    int rv;
- 
-    if (x == a || x == b || x == n) {
-        ERROR(MAIN, "assert x!=a && x!=b && x!=n\n")
-        return 1;
-    }
-
-    bigint_zero(x);
-    BIGINT_SETBIT(x, 0)
-
-    /*
-     * Calculate x = (t4^b) % n where t4 = a%n
-     * to reduce storage requirements
-     */
-    if ((rv = bigint_divmod(&t3, &t4, a, n)) > 0)
-        return rv;
-    bigint_norm(&t4);
-
-    for (i=BIGINT_BITS(b)-2; i>=0; i--) {
-        DEBUG(MAIN, "bigint_expmod: i=%u\n", i)
-
-        /* x = x**2 */
-        bigint_copy(&t1, x);
-        if ((rv = bigint_mult(&t2, x, &t1)) > 0)
-            return rv;
-        bigint_copy(x, &t2);
-
-        /* x %= n */
-        if ((rv = bigint_divmod(&t1, &t2, x, n)) > 0)
-            return rv;
-        bigint_norm(&t2);
-        bigint_copy(x, &t2);
-
-        if (BIGINT_BIT(b, i) == 1) {
-            /* x *= t4 */
-            if ((rv = bigint_mult(&t1, x, &t4)) > 0)
-                return rv;
-            bigint_copy(x, &t1);
-
-            /* x %= n */
-            if ((rv = bigint_divmod(&t1, &t2, x, n)) > 0)
-                return rv;
-            bigint_norm(&t2);
-            bigint_copy(x, &t2);
-        }
-    }
-
-    return 0;
+    bzero(i->data, sizeof(i->data));
 }
 
 ICACHE_FLASH_ATTR static int8_t hexchar(char c) {
@@ -504,4 +130,368 @@ ICACHE_FLASH_ATTR static int8_t hexchar(char c) {
         return (c - 97) + 10;
     else
         return -1;
+}
+
+ICACHE_FLASH_ATTR int bigint_fromhex(Bigint *i, const char *s) {
+    int16_t j;
+    int8_t h, l;
+
+    bigint_zero(i);
+    i->bits = 0;
+
+
+    for (j = strlen(s) - 1; j >= 1; j -= 2) {
+        if ((l = hexchar(s[j])) == -1) {
+            #if !STANDALONE
+                WARNING(MAIN, "invalid hex char\n")
+            #endif
+            return 2;
+        }
+        if ((h = hexchar(s[j-1])) == -1) {
+            #if !STANDALONE
+                WARNING(MAIN, "invalid hex char\n")
+            #endif
+            return 2;
+        }
+
+        i->data[i->bytes++] = (h << 4) | l;
+        if (i->bytes >= DATA_MAXLEN - 1) {
+            #if !STANDALONE
+                ERROR(MAIN, "data overflow\n")
+            #endif
+            return 1;
+        }
+    }
+
+    if (j == 0) {
+        if ((l = hexchar(s[j])) == -1) {
+            #if !STANDALONE
+                WARNING(MAIN, "invalid hex char\n")
+            #endif
+            return 2;
+        }
+
+        i->data[i->bytes] = l;
+        i->bits = 4;
+    }
+
+    return 0;
+}
+
+ICACHE_FLASH_ATTR void bigint_print(const Bigint *i, int size) {
+    int32_t j;
+
+    #if STANDALONE
+        #define PRINTF printf
+    #else
+        #define PRINTF os_printf
+    #endif
+
+    if (size)
+        PRINTF("%u.%u ", i->bytes, i->bits);
+
+    if (i->bits > 0)
+        PRINTF("%02x", i->data[i->bytes] & ((1 << i->bits) - 1));
+
+    for (j = i->bytes - 1; j >= 0; j--)
+        PRINTF("%02x", i->data[j]);
+}
+
+ICACHE_FLASH_ATTR void bigint_copy(Bigint *d, const Bigint *s) {
+    d->bytes = s->bytes;
+    d->bits = s->bits;
+    bzero(d->data, sizeof(d->data));
+    memcpy(d->data, s->data, d->bytes + (d->bits > 0 ? 1 : 0));
+
+    if (d->bits > 0) 
+        d->data[d->bytes] &= (1 << d->bits) - 1;
+}
+
+ICACHE_FLASH_ATTR int bigint_iszero(const Bigint *i) {
+    uint16_t j;
+
+    for (j = 0; j < i->bytes; j++)
+        if (i->data[j] > 0)
+            return 0;
+
+    if (i->bits > 0)
+        if ((i->data[i->bytes] & ((1 << i->bits) - 1)) > 0)
+            return 0;
+
+    return 1;
+}
+
+ICACHE_FLASH_ATTR int bigint_cmp(const Bigint *i, const Bigint *j) {
+    int32_t k;
+    uint8_t l, r;
+
+    if (BITS(i) > BITS(j)) {
+        for (k = BITS(i) - 1; k >= (int32_t)BITS(j); k--)
+            if (BIT(i, k) == 1)
+                return 1;
+    }
+    else if (BITS(i) < BITS(j)) {
+        for (k = BITS(j) - 1; k >= (int32_t)BITS(i); k--)
+            if (BIT(j, k) == 1)
+                return -1;
+    }
+    else
+        k = BITS(i) - 1;
+
+    /* Compare the leading bits */
+    for (; k % 8 != 0 && k >= 0; k--) {
+        l = BIT(i, k);
+        r = BIT(j, k);
+
+        if (l > r)
+            return 1;
+        else if (l < r)
+            return -1;
+    }
+
+    /* Compare the remaining bytes */
+    for (; k / 8 >= 0; k -= 8) {
+        if (i->data[k / 8] > j->data[k / 8])
+            return 1;
+        else if (i->data[k / 8] < j->data[k / 8])
+            return -1;
+    }
+
+    return 0;
+}
+
+ICACHE_FLASH_ATTR int bigint_add(Bigint *s, const Bigint *a, const Bigint *b) {
+    uint32_t i, m;
+    uint8_t n, c;
+
+    m = MAX(BITS(a), BITS(b));
+    c = 0;
+
+    for (i = 0; i < m; i++) {
+        if (i >= BITS(s)) {
+            s->bytes = (i + 1) / 8;
+            s->bits = (i + 1) % 8;
+            if (s->bytes >= DATA_MAXLEN - 1) {
+                #if !STANDALONE
+                    ERROR(MAIN, "data overflow\n")
+                #endif
+                return 1;
+            }
+        }
+
+        n = BIT(a, i) + BIT(b, i) + c;
+
+        if      (n == 3)   { SET_BIT(s, i) c = 1; }
+        else if (n == 2)   { CLR_BIT(s, i) c = 1; }
+        else if (n == 1)   { SET_BIT(s, i) c = 0; }
+        else  /* n == 0 */ { CLR_BIT(s, i) c = 0; }
+    }
+
+    if (c == 1) {
+        if (i >= BITS(s)) {
+            s->bytes = (i + 1) / 8;
+            s->bits = (i + 1) % 8;
+            if (s->bytes >= DATA_MAXLEN - 1) {
+                #if !STANDALONE
+                    ERROR(MAIN, "data overflow\n")
+                #endif
+                return 1;
+            }
+        }
+
+        SET_BIT(s, i)
+        
+        if (i >= BITS(s)) {
+            s->bytes = i / 8;
+            s->bits = i % 8;
+            if (s->bytes >= DATA_MAXLEN - 1) {
+                #if !STANDALONE
+                    ERROR(MAIN, "data overflow\n")
+                #endif
+                return 1;
+            }
+        }
+    }
+
+    if (BITS(s) > m + c) {
+        s->bytes = (m + c) / 8;
+        s->bits = (m + c) % 8;
+        normalize(s);
+    }
+
+    return 0;
+}
+
+ICACHE_FLASH_ATTR int bigint_mul(Bigint *p, const Bigint *a, const Bigint *b) {
+    uint32_t i;
+    int rv;
+
+    bigint_zero(&mul_pt);
+    bigint_copy(&mul_at, a);
+
+    for (i = 0; i < BITS(b); i++) {
+        #if !STANDALONE
+            if (i > 0 && i % 10 == 0)
+                system_soft_wdt_feed();
+        #endif
+
+        if (BIT(b, i) == 1) {
+            if ((rv = bigint_add(&mul_pt, &mul_pt, &mul_at)) > 0)
+                return rv;
+        }
+
+        LEFT_SHIFT(&mul_at)
+    }
+
+    bigint_copy(p, &mul_pt);
+
+    return 0;
+}
+
+ICACHE_FLASH_ATTR int bigint_div(Bigint *q, Bigint *r,
+                                 const Bigint *a, const Bigint *b) {
+    /*
+     * q := a / b, r := a % b
+     * where bn is the number of bits in b
+     *
+     * if b = 0 then error end
+     * q := 0
+     * r := 0
+     * for i := bn − 1 .. 0 do
+     *   r := l << 1
+     *   r(0) := a(i)
+     *   if r >= b then
+     *     r := r − b
+     *     q(i) := 1
+     *   end
+     * end
+     */
+
+    int32_t i;
+    int rv;
+
+    if (bigint_iszero(b)) {
+        #if !STANDALONE
+            WARNING(MAIN, "division by zero\n")
+        #endif
+        return 2;
+    }
+
+    if (q == r) {
+        #if !STANDALONE
+            ERROR(MAIN, "assert q != r\n")
+        #endif
+        return 2;
+    }
+
+    bigint_zero(&div_qt);
+    bigint_zero(&div_rt);
+
+    bigint_copy(&div_bc, b);
+    TWOS_COMP(&div_bc)
+
+    for (i = BITS(a) - 1; i >= 0; i--) {
+        #if !STANDALONE
+            if (i % 10 == 0)
+                system_soft_wdt_feed();
+        #endif
+
+        LEFT_SHIFT(&div_rt)
+        div_rt.data[0] |= BIT(a, i);
+
+        if (++div_qt.bits == 8) {
+            div_qt.bytes++;
+            div_qt.bits = 0;
+            if (div_qt.bytes >= DATA_MAXLEN - 1) {
+                #if !STANDALONE
+                    ERROR(MAIN, "data overflow\n")
+                #endif
+                return 1;
+            }
+        }
+
+        if (bigint_cmp(&div_rt, b) >= 0) {
+            /* r = r + (-b) */
+
+            if ((rv = bigint_add(&div_rt, &div_rt, &div_bc)) > 0)
+                return rv;
+
+            if (BITS(&div_rt) > BITS(b)) {
+                div_rt.bytes = b->bytes;
+                div_rt.bits = b->bits;
+                normalize(&div_rt);
+            }
+
+            if (bigint_cmp(&div_rt, b) >= 0) {
+                #if !STANDALONE
+                    ERROR(MAIN, "assert r < b\n")
+                #endif
+                return 3;
+            }
+
+            SET_BIT(&div_qt, i)
+        }
+    }
+
+    if (q != NULL) {
+        normalize(&div_qt);
+        bigint_copy(q, &div_qt);
+    }
+    if (r != NULL) {
+        normalize(&div_rt);
+        bigint_copy(r, &div_rt);
+    }
+
+    return 0;
+}
+
+ICACHE_FLASH_ATTR int bigint_expmod(Bigint *x, const Bigint *a,
+                                    const Bigint *b, const Bigint *c) {
+    /*
+     * x := (a ** b) % c
+     * where bn is the number of bits in b
+     *
+     * x := 1
+     * r := a % c
+     * for i := bn - 1 .. 0 do
+     *   x := (x ** 2) % c
+     *   if b(i) = 1 then
+     *     x := (x * r) % c
+     *   end
+     * end
+     */
+
+    int rv;
+    int32_t i;
+
+    bigint_zero(&expmod_xt);
+    SET_BIT(&expmod_xt, 0)
+
+    if ((rv = bigint_div(NULL, &expmod_r, a, c)) > 0)
+        return rv;
+
+    for (i = BITS(b) - 1; i >= 0; i--) {
+        #if !STANDALONE
+            if (i % 10 == 0)
+                DEBUG(MAIN, "expmod i=%u\n", i)
+        #endif
+
+        /* x = (x ** 2) % c */
+        if ((rv = bigint_mul(&expmod_xt, &expmod_xt, &expmod_xt)) > 0)
+            return rv;
+        if ((rv = bigint_div(NULL, &expmod_xt, &expmod_xt, c)) > 0)
+            return rv;
+
+        if (BIT(b, i) == 1) {
+            /* x = (x * r) % c */
+            if ((rv = bigint_mul(&expmod_xt, &expmod_xt, &expmod_r)) > 0)
+                return rv;
+            if ((rv = bigint_div(NULL, &expmod_xt, &expmod_xt, c)) > 0)
+                return rv;
+        }
+    }
+
+    bigint_copy(x, &expmod_xt);
+
+    return 0;
 }

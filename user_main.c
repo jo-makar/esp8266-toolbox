@@ -14,23 +14,6 @@
 #endif
 
 ICACHE_FLASH_ATTR void user_init() {
-    /* FIXME Remove */
-    {
-        #include "crypto/bigint.h"
-
-        extern Bigint pubkey_mod;
-        extern Bigint pubkey_exp;
-
-        Bigint clear, cipher;
-
-        bigint_fromhex(&clear, "cafebabe");
-        /* FIXME assert len(clear) < len(pubkey_mod) */
-
-        bigint_expmod(&cipher, &clear, &pubkey_exp, &pubkey_mod);
-
-        os_printf("cipher = "); bigint_print(&cipher); os_printf("\n");
-    }
-
     /*
      * The SDK function system_get_time() overflows about every 71 mins.
      * This timer ensure that overflow is handled cleanly,
