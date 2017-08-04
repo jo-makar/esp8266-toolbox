@@ -12,19 +12,13 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
   - Adjustable max length
   - Unsigned operations sufficient for most PKI
 - [x] RSA encryption/decryption implementation
-
-FIXME Rewrite the next two sections & work out the minimum needed
-
-- [ ] Signed OTA updates
-  - Will need PKI impl and ideally use OpenSSL on host
-- [ ] Add WiFi urls: /wifi/{setup,info,scan?}
+- [ ] Signed OTA firmware updates
+  - Using RSA signature verification
+- [ ] Add WiFi urls: /wifi/{setup,info}
 - [ ] Add /logs to show last 100 log lines in a circular buffer
 - [ ] SMTP client framework for email/text alerts
 - [ ] Light, motion detection sensor drivers
 - [ ] Temp., humidity sensor drivers
-- [ ] Battery power circuit and monitoring code
-  - Use sleep modes for power conservation
-- [ ] Production board design
 
 # Later
 - [ ] Pull-based OTA updates via HTTP GET
@@ -34,13 +28,19 @@ FIXME Rewrite the next two sections & work out the minimum needed
   - Limitation of only one server socket and one client
 - [ ] NTP client framework (provided by the SDK)
 - [ ] MQTT client framework
+- [ ] Battery power circuit and monitoring code
+  - Use sleep modes for power conservation
+- [ ] Production board design
 
-# OTA updates
+# Signed OTA firmware updates
 An unencoded binary is uploaded by HTTP POST to /fota/push.  The binary gets
 written to the unused partition in flash while its hash is calculated.  When done
 it is read from flash and its hash is recalculated to verify the write integrity,
 if successful an HTTP 202 Accepted response is returned and the system is
 rebooted into the new application.
+
+The binary is preceded with an RSA signature of the binary.  If the signature
+does not match the calculated hash the firmware is rejected.
 
 The Makefile target fota shows how this can be done with curl.
 
