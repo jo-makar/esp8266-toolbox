@@ -31,7 +31,7 @@ class RsaPrivkey(Sequence):
 # using (d*e) mod f = ((d mod f) * (e mod f)) mod f
 # and   (g^h) mod i = ((g mod i)^h) mod i
 # via induction: (a^n) mod c = (((a^(n-1)) mod c) * ((a^(n-1)) mod c)) mod c
-def modexp(a, b, c):
+def expmod(a, b, c):
     assert b > 0
 
     # Remove the prepended 0b
@@ -72,7 +72,7 @@ if __name__ == '__main__':
                 break
             sha256.update(chunk)
 
-    cipher = modexp(int(sha256.hexdigest(), 16),
+    cipher = expmod(int(sha256.hexdigest(), 16),
                     privkey['privateExponent'],
                     privkey['modulus'])
 

@@ -115,6 +115,10 @@ ICACHE_FLASH_ATTR void normalize(Bigint *i) {
         i->bits = 1;
 }
 
+ICACHE_FLASH_ATTR uint32_t bigint_bits(const Bigint *i) {
+    return BITS(i);
+}
+
 ICACHE_FLASH_ATTR void bigint_zero(Bigint *i) {
     i->bytes = 0;
     i->bits = 1;

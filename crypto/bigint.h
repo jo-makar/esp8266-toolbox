@@ -14,6 +14,8 @@ typedef struct {
     uint8_t data[DATA_MAXLEN];
 } Bigint;
 
+uint32_t bigint_bits(const Bigint *i);
+
 void bigint_zero(Bigint *i);
 
 int bigint_fromhex(Bigint *i, const char *s);

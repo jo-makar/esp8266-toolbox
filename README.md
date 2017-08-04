@@ -11,7 +11,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] Big integer implementation
   - Adjustable max length
   - Unsigned operations sufficient for most PKI
-- [ ] RSA encryption/decryption implementation
+- [x] RSA encryption/decryption implementation
 
 FIXME Rewrite the next two sections & work out the minimum needed
 
