@@ -95,6 +95,8 @@ eagle.app.flash.bin: app.elf
 	@du -b $@ | \
          awk '{printf "%.2f KB, %.3f%%\n", $$1/1024, $$1/$(MAX_APP_SIZE)*100}'
 
+	@crypto/sign.py crypto/privkey.pem $@
+
 app.elf: $(OBJ)
 	@echo LD $@
 	@$(LD) $(LDFLAGS) -L$(SDK_PATH)/usr/lib -L$(SDK_PATH)/lib \
@@ -108,7 +110,7 @@ app.elf: $(OBJ)
 -include $(DEP)
 
 clean:
-	@rm -f eagle.app.*.bin app.elf $(OBJ) $(DEP)
+	@rm -f eagle.app.*.bin* app.elf $(OBJ) $(DEP)
 
 flash: eagle.app.flash.bin
 	@echo WRITE_FLASH
@@ -132,6 +134,7 @@ flash: eagle.app.flash.bin
 fota: eagle.app.flash.bin
 	@echo HTTP_UPDATE
 	@sha256sum $< | awk '{print $$1}'
+	@hexdump -n 64 -e '1/1 "%02x"' $<.sig; echo
 	@curl --data-binary @$< http://192.168.4.1/fota/push; echo
 
 keys:
@@ -140,4 +143,4 @@ keys:
 	@openssl genrsa -out crypto/privkey.pem 512
 	@openssl rsa -in crypto/privkey.pem -out crypto/pubkey.pem -pubout
 	@openssl rsa -in crypto/pubkey.pem -pubin -text -noout
-	@crypto/rsapubkey.py crypto/privkey.pem | tee crypto/pubkey.c
+	@crypto/pubkey.py crypto/privkey.pem | tee crypto/pubkey.c

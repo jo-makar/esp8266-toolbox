@@ -1,4 +1,4 @@
-eagle.app.*.bin
+eagle.app.*.bin*
 app.elf
 
 uart0/uart0
