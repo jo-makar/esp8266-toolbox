@@ -69,7 +69,9 @@ BLANK_ADDR4 = $(shell printf "0x%05x\n" \
 BLANK_ADDR5 = $(shell printf "0x%05x\n" \
                     `echo '($(FLASH_SIZE_KB) - 4) * 1024' | bc`)
 
-eagle.app.flash.bin: app.elf
+all: app1.bin app2.bin
+
+app1.bin: app1.elf
 	@echo GEN_APPBIN $<
 
 	@# The gen_appbin.py script expects specific filenames
@@ -83,24 +85,60 @@ eagle.app.flash.bin: app.elf
 	@# TODO Specific information on the various parameters here
 
 	@# gen_appbin.py appends to an existing file
-	@rm -f $@
+	@rm -f eagle.app.flash.bin
 
 	@COMPILE=gcc PATH=$$PATH:$(TOOLCHAIN_PATH) python $(GEN_APPBIN) $< \
              2 0 15 $(FLASH_SIZE_GEN_APPBIN) 0
 
 	@rm eagle.app.v6.*.bin
+	@mv eagle.app.flash.bin $@
 
-	@# Verify eagle.app.flash.bin (user app) is within size limits
+	@# Verify the user app is within size limits
 	@test `du -b $@ | awk '{print $$1}'` -le $(MAX_APP_SIZE) || false
 	@du -b $@ | \
          awk '{printf "%.2f KB, %.3f%%\n", $$1/1024, $$1/$(MAX_APP_SIZE)*100}'
 
 	@crypto/sign.py crypto/privkey.pem $@
 
-app.elf: $(OBJ)
+app2.bin: app2.elf
+	@echo GEN_APPBIN $<
+
+	@# The gen_appbin.py script expects specific filenames
+	@$(OBJCOPY) -j .text -O binary $< eagle.app.v6.text.bin
+	@$(OBJCOPY) -j .irom0.text -O binary $< eagle.app.v6.irom0text.bin
+	@$(OBJCOPY) -j .data -O binary $< eagle.app.v6.data.bin
+	@$(OBJCOPY) -j .rodata -O binary $< eagle.app.v6.rodata.bin
+
+	@# gen_appbin.py boot_mode = 2, flash_mode = 0 (QIO),
+	@#               flash_clk_div = 15 (80 MHz), flash_size_map, user_bin = 0
+	@# TODO Specific information on the various parameters here
+
+	@# gen_appbin.py appends to an existing file
+	@rm -f eagle.app.flash.bin
+
+	@COMPILE=gcc PATH=$$PATH:$(TOOLCHAIN_PATH) python $(GEN_APPBIN) $< \
+             2 0 15 $(FLASH_SIZE_GEN_APPBIN) 0
+
+	@rm eagle.app.v6.*.bin
+	@mv eagle.app.flash.bin $@
+
+	@# Verify the user app is within size limits
+	@test `du -b $@ | awk '{print $$1}'` -le $(MAX_APP_SIZE) || false
+	@du -b $@ | \
+         awk '{printf "%.2f KB, %.3f%%\n", $$1/1024, $$1/$(MAX_APP_SIZE)*100}'
+
+	@crypto/sign.py crypto/privkey.pem $@
+
+app1.elf: $(OBJ)
 	@echo LD $@
 	@$(LD) $(LDFLAGS) -L$(SDK_PATH)/usr/lib -L$(SDK_PATH)/lib \
              -L$(NONOS_SDK_PATH)/ld -Teagle.app.v6.new.1024.app1.ld \
+             -o $@ $^ $(SDKLIBS)
+
+app2.elf: $(OBJ)
+	@echo LD $@
+	@$(LD) $(LDFLAGS) -L$(SDK_PATH)/usr/lib -L$(SDK_PATH)/lib \
+             -L$(NONOS_SDK_PATH)/ld -Teagle.app.v6.new.1024.app2.ld \
              -o $@ $^ $(SDKLIBS)
 
 %.o: %.c
@@ -110,10 +148,10 @@ app.elf: $(OBJ)
 -include $(DEP)
 
 clean:
-	@rm -f eagle.app.*.bin* app.elf $(OBJ) $(DEP)
+	@rm -f app?.bin* app?.elf eagle.app.*.bin $(OBJ) $(DEP)
 
-flash: eagle.app.flash.bin
-	@echo WRITE_FLASH
+flash: app1.bin
+	@echo WRITE_FLASH $<
 
 	@# Verify the sizes of the bin files
 	@test `du -b $(BOOT_BIN) | awk '{print $$1}'` -le 4096 || false
@@ -123,7 +161,7 @@ flash: eagle.app.flash.bin
 	@$(ESPTOOL) -p $(PORT) write_flash \
              -ff 80m -fm qio -fs $(FLASH_SIZE_ESPTOOL) --verify \
              0x00000 $(BOOT_BIN) \
-             0x01000 eagle.app.flash.bin \
+             0x01000 app1.bin \
              $(BLANK_ADDR1) $(BLANK_BIN) \
              $(BLANK_ADDR2) $(BLANK_BIN) \
              $(ESPDATA_ADDR) $(ESP_DATA_BIN) \
@@ -131,8 +169,14 @@ flash: eagle.app.flash.bin
              $(BLANK_ADDR4) $(BLANK_BIN) \
              $(BLANK_ADDR5) $(BLANK_BIN)
 
-fota: eagle.app.flash.bin
-	@echo HTTP_UPDATE
+fota1: app1.bin
+	@echo HTTP_UPDATE $<
+	@sha256sum $< | awk '{print $$1}'
+	@cat $<.sig
+	@curl --data-binary @$< http://192.168.4.1/fota/push/?`cat $<.sig`; echo
+
+fota2: app2.bin
+	@echo HTTP_UPDATE $<
 	@sha256sum $< | awk '{print $$1}'
 	@cat $<.sig
 	@curl --data-binary @$< http://192.168.4.1/fota/push/?`cat $<.sig`; echo
