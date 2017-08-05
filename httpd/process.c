@@ -176,9 +176,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
         char *beg=(char *)client->url, *end;
         size_t i;
 
-        if (index(beg, '?') != NULL)
-            end = index(beg, '?') - 1;
-        else
+        if ((end = index(beg, '?')) == NULL)
             end = beg + os_strlen(beg);
 
         if ((size_t)(end-beg) > sizeof(baseurl)) {

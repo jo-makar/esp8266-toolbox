@@ -48,6 +48,7 @@ The Makefile target fota shows how this can be done with curl.
 # Provided urls
 Url | Description
 --- | -----------
+/fota/bin | Currently executing userbin/partition
 /fota/push | Push-based OTA updates (described above)
 /uptime | System uptime
 /version | Application version

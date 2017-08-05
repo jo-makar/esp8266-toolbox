@@ -169,17 +169,17 @@ flash: app1.bin
              $(BLANK_ADDR4) $(BLANK_BIN) \
              $(BLANK_ADDR5) $(BLANK_BIN)
 
-fota1: app1.bin
-	@echo HTTP_UPDATE $<
-	@sha256sum $< | awk '{print $$1}'
-	@cat $<.sig
-	@curl --data-binary @$< http://192.168.4.1/fota/push/?`cat $<.sig`; echo
-
-fota2: app2.bin
-	@echo HTTP_UPDATE $<
-	@sha256sum $< | awk '{print $$1}'
-	@cat $<.sig
-	@curl --data-binary @$< http://192.168.4.1/fota/push/?`cat $<.sig`; echo
+fota: app1.bin app2.bin
+	@echo HTTP_UPDATE
+	@bin=`curl http://192.168.4.1/fota/bin 2>/dev/null`; \
+         if [ $$bin = '0' ]; then file=app2.bin; \
+         elif [ $$bin = '1' ]; then file=app1.bin; \
+         else false; fi; \
+         \
+         echo $$file; \
+         cat $$file.sig; \
+         curl --data-binary @$$file \
+             http://192.168.4.1/fota/push?`cat $$file.sig`
 
 keys:
 	@echo OPENSSL GENRSA

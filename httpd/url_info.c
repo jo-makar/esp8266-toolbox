@@ -30,7 +30,7 @@ ICACHE_FLASH_ATTR int httpd_url_version(HttpdClient *client) {
                         VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH,
                         BUILD_DATETIME)
 
-    HTTPD_OUTBUF_APPEND("</body></html>")
+    HTTPD_OUTBUF_APPEND("</body></html>\n")
 
     end = httpd_outbuflen;
 
@@ -83,7 +83,7 @@ ICACHE_FLASH_ATTR int httpd_url_uptime(HttpdClient *client) {
         HTTPD_OUTBUF_PRINTF("%u days ", days)
     HTTPD_OUTBUF_PRINTF("%02u:%02u:%02u</h1>", hours, mins, secs)
 
-    HTTPD_OUTBUF_APPEND("</body></html>")
+    HTTPD_OUTBUF_APPEND("</body></html>\n")
 
     end = httpd_outbuflen;
 

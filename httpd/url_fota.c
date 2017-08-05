@@ -35,7 +35,23 @@ static FotaState fotastate;
 
 static void fota_reboot(void *arg);
 
-ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
+ICACHE_FLASH_ATTR int httpd_url_fota_bin(HttpdClient *client) {
+    HTTPD_IGNORE_POSTDATA
+
+    HTTPD_OUTBUF_APPEND("HTTP/1.1 200 OK\r\n")
+    HTTPD_OUTBUF_APPEND("Connection: close\r\n")
+    HTTPD_OUTBUF_APPEND("Content-type: text/plain\r\n")
+    HTTPD_OUTBUF_APPEND("Content-length: 2\r\n")
+    HTTPD_OUTBUF_APPEND("\r\n")
+    HTTPD_OUTBUF_PRINTF("%01x\n", system_upgrade_userbin_check())
+
+    if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
+        ERROR(HTTPD, "espconn_send() failed\n")
+
+    return 1;
+}
+
+ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
     uint32_t size_kb;
     uint32_t curaddr;
     size_t len;
@@ -263,9 +279,9 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("HTTP/1.1 202 Accepted\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")
     HTTPD_OUTBUF_APPEND("Content-type: text/html\r\n")
-    HTTPD_OUTBUF_APPEND("Content-length: 47\r\n")
+    HTTPD_OUTBUF_APPEND("Content-length: 48\r\n")
     HTTPD_OUTBUF_APPEND("\r\n")
-    HTTPD_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>")
+    HTTPD_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>\n")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
         ERROR(HTTPD, "espconn_send() failed\n")
@@ -282,9 +298,9 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("HTTP/1.1 400 Bad Request\r\n")
     HTTPD_OUTBUF_APPEND("Connection: close\r\n")
     HTTPD_OUTBUF_APPEND("Content-type: text/html\r\n")
-    HTTPD_OUTBUF_APPEND("Content-length: 50\r\n")
+    HTTPD_OUTBUF_APPEND("Content-length: 51\r\n")
     HTTPD_OUTBUF_APPEND("\r\n")
-    HTTPD_OUTBUF_APPEND("<html><body><h1>400 Bad Request</h1></body></html>")
+    HTTPD_OUTBUF_APPEND("<html><body><h1>400 Bad Request</h1></body></html>\n")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
         ERROR(HTTPD, "espconn_send() failed\n")
