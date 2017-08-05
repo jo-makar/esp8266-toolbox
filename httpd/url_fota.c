@@ -6,6 +6,8 @@
 #include <spi_flash.h>
 #include <upgrade.h>
 
+#include "../crypto/bigint.h"
+#include "../crypto/rsa.h"
 #include "../crypto/sha256.h"
 #include "../log.h"
 #include "httpd.h"
@@ -24,6 +26,9 @@ typedef struct {
     uint16_t secused;
 
     os_timer_t timer;
+
+    Bigint cipher, clear;
+    uint8_t hash3[32];
 } FotaState;
 
 static FotaState fotastate;
@@ -152,6 +157,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
         INFO_PREFIX
         uint8_t i;
 
+        os_printf("bin hash = ");
         for (i=0; i<32; i++)
             os_printf("%02x", fotastate.hash1[i]);
         os_printf("\n");
@@ -192,6 +198,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
         INFO_PREFIX
         uint8_t i;
 
+        os_printf("read hash = ");
         for (i=0; i<32; i++)
             os_printf("%02x", fotastate.hash2[i]);
         os_printf("\n");
@@ -201,6 +208,56 @@ ICACHE_FLASH_ATTR int httpd_url_fota(HttpdClient *client) {
     if (os_strncmp((char *)fotastate.hash1, (char *)fotastate.hash2, 32) != 0) {
         ERROR(HTTPD, "hash mismatch\n")
         goto fail;
+    }
+
+    /*
+     * Verify the signature
+     */
+
+    {
+        char *start;
+        int16_t bytes;
+        int16_t i, j;
+
+        if (index((char *)client->url, '?') == NULL) {
+            ERROR(HTTPD, "no signature\n")
+            goto fail;
+        }
+        start = index((char *)client->url, '?') + 1;
+
+        if (bigint_fromhex(&fotastate.cipher, start) > 0) {
+            ERROR(HTTPD, "invalid signature\n")
+            goto fail;
+        }
+        if (rsa_pubkey_decrypt(&fotastate.clear, &fotastate.cipher) > 0) {
+            ERROR(HTTPD, "invalid signature\n")
+            goto fail;
+        }
+
+        bytes = fotastate.clear.bytes + (fotastate.clear.bits>0 ? 1 : 0);
+
+        for (i=0; i<32-bytes; i++)
+            fotastate.hash3[i] = 0;
+        for (j=bytes-1; j>=0; i++, j--)
+            fotastate.hash3[i] = fotastate.clear.data[j];
+            
+        #if HTTPD_LOG_LEVEL <= LEVEL_INFO
+        {
+            INFO_PREFIX
+            uint8_t i;
+
+            os_printf("sig hash = ");
+            for (i=0; i<32; i++)
+                os_printf("%02x", fotastate.hash3[i]);
+            os_printf("\n");
+        }
+        #endif
+
+        if (os_strncmp((char *)fotastate.hash1,
+                       (char *)fotastate.hash3, 32) != 0) {
+            ERROR(HTTPD, "hash mismatch\n")
+            goto fail;
+        }
     }
 
     HTTPD_OUTBUF_APPEND("HTTP/1.1 202 Accepted\r\n")

@@ -134,8 +134,8 @@ flash: eagle.app.flash.bin
 fota: eagle.app.flash.bin
 	@echo HTTP_UPDATE
 	@sha256sum $< | awk '{print $$1}'
-	@hexdump -n 64 -e '1/1 "%02x"' $<.sig; echo
-	@curl --data-binary @$< http://192.168.4.1/fota/push; echo
+	@cat $<.sig
+	@curl --data-binary @$< http://192.168.4.1/fota/push/?`cat $<.sig`; echo
 
 keys:
 	@echo OPENSSL GENRSA

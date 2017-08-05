@@ -76,9 +76,5 @@ if __name__ == '__main__':
                     privkey['privateExponent'],
                     privkey['modulus'])
 
-    signed = '%x' % cipher
-    signed = ('0' * (512/4 - len(signed))) + signed
-
-    with open(sys.argv[2] + '.sig', 'wb') as sigfile:
-        for c in [signed[i:i+2] for i in range(0, len(signed), 2)]:
-            sigfile.write(chr(int(c, 16)))
+    with open(sys.argv[2] + '.sig', 'w') as sigfile:
+        sigfile.write('%x\n' % cipher)

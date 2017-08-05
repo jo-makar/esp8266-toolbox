@@ -12,7 +12,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
   - Adjustable max length
   - Unsigned operations sufficient for most PKI
 - [x] RSA encryption/decryption implementation
-- [ ] Signed OTA firmware updates
+- [x] Signed OTA firmware updates
   - Using RSA signature verification
 - [ ] Add WiFi urls: /wifi/{setup,info}
 - [ ] Add /logs to show last 100 log lines in a circular buffer
@@ -39,8 +39,9 @@ it is read from flash and its hash is recalculated to verify the write integrity
 if successful an HTTP 202 Accepted response is returned and the system is
 rebooted into the new application.
 
-The binary is preceded with an RSA signature of the binary.  If the signature
-does not match the calculated hash the firmware is rejected.
+The binary's hash is encrypted with a private RSA key and included in the URL to
+serve as a signature.  If the signature does not verify with the embedded public
+key the firmware is rejected.
 
 The Makefile target fota shows how this can be done with curl.
 
