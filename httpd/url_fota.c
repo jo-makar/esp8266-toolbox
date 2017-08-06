@@ -62,7 +62,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
         uint8_t i; \
         \
         for (i=0; i<32; i++) \
-            os_snprintf(s+i*2, 2, "%02x", h[i]); \
+            os_snprintf(s+i*2, 3, "%02x", h[i]); \
         \
         s[64] = 0; \
     }

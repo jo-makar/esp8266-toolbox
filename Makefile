@@ -177,6 +177,7 @@ fota: app1.bin app2.bin
          else false; fi; \
          \
          echo $$file; \
+         sha256sum $$file | awk '{print $$1}'; \
          cat $$file.sig; \
          curl --data-binary @$$file \
              http://192.168.4.1/fota/push?`cat $$file.sig`
