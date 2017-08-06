@@ -112,4 +112,6 @@ int httpd_url_fota_push(HttpdClient *client);
 int httpd_url_version(HttpdClient *client);
 int httpd_url_uptime(HttpdClient *client);
 
+int httpd_url_wifi_setup(HttpdClient *client);
+
 #endif

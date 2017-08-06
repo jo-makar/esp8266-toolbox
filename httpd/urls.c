@@ -40,11 +40,12 @@ ICACHE_FLASH_ATTR int httpd_url_blank(HttpdClient *client) {
 }
 
 const HttpdUrl httpd_urls[] = {
-    { "/",          httpd_url_blank },
-    { "/fota/bin",  httpd_url_fota_bin },
-    { "/fota/push", httpd_url_fota_push },
-    { "/uptime",    httpd_url_uptime },
-    { "/version",   httpd_url_version },
+    { "/",           httpd_url_blank },
+    { "/fota/bin",   httpd_url_fota_bin },
+    { "/fota/push",  httpd_url_fota_push },
+    { "/uptime",     httpd_url_uptime },
+    { "/version",    httpd_url_version },
+    { "/wifi/setup", httpd_url_wifi_setup },
 };
 
 const size_t httpd_urlcount = sizeof(httpd_urls) / sizeof(*httpd_urls);

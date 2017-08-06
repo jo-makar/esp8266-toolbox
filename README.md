@@ -52,6 +52,7 @@ Url | Description
 /fota/push | Push-based OTA updates (described above)
 /uptime | System uptime
 /version | Application version
+/wifi/setup | WiFi SSID/password setup
 
 # Quick start
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
