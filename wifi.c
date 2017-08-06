@@ -10,42 +10,54 @@
 static void wifi_evt_cb(System_Event_t *evt);
 
 ICACHE_FLASH_ATTR void wifi_init() {
-    struct softap_config conf;
-    char ssid[sizeof(conf.ssid)];
+    struct softap_config apconf;
+    char ssid[sizeof(apconf.ssid)];
+    struct station_config staconf;
 
     if (wifi_get_opmode() != STATIONAP_MODE) {
         if (!wifi_set_opmode(STATIONAP_MODE))
             CRITICAL(MAIN, "wifi_set_opmode() failed\n")
     }
 
-    if (!wifi_softap_get_config(&conf))
+    if (!wifi_softap_get_config(&apconf))
         CRITICAL(MAIN, "wifi_softap_get_config() failed\n")
 
-    /* assert sizeof(SSID_PREFIX) + 10 < MIN(size(ssid), size(conf.ssid)) */
+    /* assert sizeof(SSID_PREFIX) + 10 < MIN(size(ssid), size(apconf.ssid)) */
     os_snprintf(ssid, sizeof(ssid),
                 "%s-%08x", SSID_PREFIX, system_get_chip_id());
-    if (os_strncmp(ssid, (char *)conf.ssid, os_strlen(ssid)) != 0) {
-        os_strncpy((char *)conf.ssid, ssid, os_strlen(ssid)+1);
-        os_strncpy((char *)conf.password, SSID_PASS, os_strlen(SSID_PASS)+1);
-        conf.ssid_len = 0;
+    if (os_strncmp(ssid, (char *)apconf.ssid, os_strlen(ssid)) != 0) {
+        os_strncpy((char *)apconf.ssid, ssid, os_strlen(ssid)+1);
+        os_strncpy((char *)apconf.password, SSID_PASS, os_strlen(SSID_PASS)+1);
+        apconf.ssid_len = 0;
 
         /* The underlying hardware only supports one channel,
          * which will be purposefully overriden when connecting as a station.
          * Ref: ESP8266 Non-OS SDK API Reference (ver 2.1.2),
          *      A.4 ESP8266 SoftAP and Station Channel Configuration
          */
-        conf.channel = 1;
+        apconf.channel = 1;
 
-        conf.authmode = AUTH_WPA_WPA2_PSK;
-        conf.ssid_hidden = 0;
-        conf.max_connection = MAX_CONN;
-        conf.beacon_interval = 100;
+        apconf.authmode = AUTH_WPA_WPA2_PSK;
+        apconf.ssid_hidden = 0;
+        apconf.max_connection = MAX_CONN;
+        apconf.beacon_interval = 100;
 
-        if (!wifi_softap_set_config(&conf))
+        if (!wifi_softap_set_config(&apconf))
             CRITICAL(MAIN, "wifi_softap_set_config() failed\n")
     }
 
     wifi_set_event_handler_cb(wifi_evt_cb);
+
+    if (!wifi_station_get_config(&staconf)) {
+        ERROR(MAIN, "wifi_station_get_config() failed\n")
+        return;
+    }
+
+    INFO(MAIN, "station: ssid=%s\n", staconf.ssid)
+    /* INFO(MAIN, "station: pass=%s\n", staconf.password) */
+    if (staconf.bssid_set)
+        INFO(MAIN, "station: bssid=" MACSTR "\n",
+                   staconf.password, MAC2STR(staconf.bssid))
 }
 
 ICACHE_FLASH_ATTR static void wifi_evt_cb(System_Event_t *evt) {

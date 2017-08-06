@@ -53,7 +53,8 @@ ICACHE_FLASH_ATTR int httpd_url_wifi_setup(HttpdClient *client) {
         key = next;
     }
 
-    if (os_strlen((char *)conf.ssid) == 0 || os_strlen((char *)conf.password))
+    if (os_strlen((char *)conf.ssid) == 0 ||
+            os_strlen((char *)conf.password) == 0)
         goto form;
 
     if (!wifi_station_set_config(&conf)) {

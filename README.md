@@ -14,13 +14,13 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] RSA encryption/decryption implementation
 - [x] Signed OTA firmware updates
   - Using RSA signature verification
-- [ ] Add WiFi urls: /wifi/info
 - [ ] Add /logs to show last 100 log lines in a circular buffer
 - [ ] SMTP client framework for email/text alerts
 - [ ] Light, motion detection sensor drivers
 - [ ] Temp., humidity sensor drivers
 
 # Later
+- [ ] Add /wifi/info for (at least) connected station RSSI, etc
 - [ ] Pull-based OTA updates via HTTP GET
   - Scheduled checks say every six hours by timer
   - The server url will use an id for device-specific apps/keys
