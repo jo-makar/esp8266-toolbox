@@ -14,7 +14,7 @@ ICACHE_FLASH_ATTR void uptime_overflow_handler(void *arg) {
 
     uint32_t t;
 
-    INFO(MAIN, "uptime_overflow_handler\n")
+    LOG_INFO(MAIN, "uptime_overflow_handler\n")
 
     if ((t=system_get_time()) < uptime_last)
         uptime_high++;

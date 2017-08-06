@@ -46,7 +46,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota_bin(HttpdClient *client) {
     HTTPD_OUTBUF_PRINTF("%01x\n", system_upgrade_userbin_check())
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "espconn_send() failed\n")
 
     return 1;
 }
@@ -84,14 +84,14 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
 
             case FLASH_SIZE_2M:
             default:
-                ERROR(HTTPD, "unsupported flash map (0x%02x)\n")
+                LOG_ERROR(HTTPD, "unsupported flash map (0x%02x)\n")
                 goto fail;
                 break;
         }
 
         curaddr = system_get_userbin_addr();
         if (curaddr != 4*1024 && curaddr != (size_kb/2+4)*1024) {
-            ERROR(HTTPD, "unexpected userbin addr\n")
+            LOG_ERROR(HTTPD, "unexpected userbin addr\n")
             goto fail;
         }
 
@@ -105,18 +105,18 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
         fotastate.secused = 0;
 
         if (client->state != HTTPD_STATE_POSTDATA) {
-            ERROR(HTTPD, "no post data\n")
+            LOG_ERROR(HTTPD, "no post data\n")
             goto fail;
         }
 
         if (client->postlen > (size_kb/2-20) * 1024) {
-            ERROR(HTTPD, "max app size exceeded\n")
+            LOG_ERROR(HTTPD, "max app size exceeded\n")
             goto fail;
         }
     }
 
     if (fotastate.client != client) {
-        ERROR(HTTPD, "multiple client detected\n")
+        LOG_ERROR(HTTPD, "multiple client detected\n")
         goto fail;
     }
 
@@ -126,9 +126,9 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
      */
 
     if (espconn_recv_hold(client->conn))
-        ERROR(HTTPD, "espconn_recv_hold() failed\n")
+        LOG_ERROR(HTTPD, "espconn_recv_hold() failed\n")
 
-    DEBUG(HTTPD, "loop begins: bufused=%u\n", client->bufused)
+    LOG_DEBUG(HTTPD, "loop begins: bufused=%u\n", client->bufused)
 
     while (client->bufused > 0 && client->postlen > client->postused) {
         system_soft_wdt_feed();
@@ -148,20 +148,20 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
 
             if (spi_flash_erase_sector(fotastate.newaddr_cur/SPI_FLASH_SEC_SIZE)
                     != SPI_FLASH_RESULT_OK) {
-                ERROR(HTTPD, "spi_flash_erase_sector() failed\n")
+                LOG_ERROR(HTTPD, "spi_flash_erase_sector() failed\n")
                 goto fail;
             }
 
             if (spi_flash_write(fotastate.newaddr_cur,
                                 (uint32_t *)fotastate.secbuf, SPI_FLASH_SEC_SIZE)
                     != SPI_FLASH_RESULT_OK) {
-                ERROR(HTTPD, "spi_flash_write() failed\n")
+                LOG_ERROR(HTTPD, "spi_flash_write() failed\n")
                 goto fail;
             }
 
             sha256_proc(&fotastate.sha256, fotastate.secbuf, fotastate.secused);
 
-            INFO(HTTPD, "flashed sector 0x%05x\n", fotastate.newaddr_cur)
+            LOG_INFO(HTTPD, "flashed sector 0x%05x\n", fotastate.newaddr_cur)
 
             fotastate.newaddr_cur += SPI_FLASH_SEC_SIZE;
 
@@ -171,7 +171,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
     }
 
     if (espconn_recv_unhold(client->conn))
-        ERROR(HTTPD, "espconn_recv_unhold() failed\n")
+        LOG_ERROR(HTTPD, "espconn_recv_unhold() failed\n")
 
     if (client->postlen > client->postused)
         return 0;
@@ -179,7 +179,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
     sha256_done(&fotastate.sha256, fotastate.hash1);
 
     HASH_TO_STR(fotastate.hash1, hashstr)
-    INFO(HTTPD, "bin hash = %s\n", hashstr)
+    LOG_INFO(HTTPD, "bin hash = %s\n", hashstr)
 
     /*
      * Read the just written application
@@ -197,7 +197,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
         if (spi_flash_read(addr, (uint32_t *)fotastate.secbuf,
                            SPI_FLASH_SEC_SIZE)
                 != SPI_FLASH_RESULT_OK) {
-            ERROR(HTTPD, "spi_flash_read() failed\n")
+            LOG_ERROR(HTTPD, "spi_flash_read() failed\n")
             goto fail;
         }
 
@@ -211,10 +211,10 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
     sha256_done(&fotastate.sha256, fotastate.hash2);
 
     HASH_TO_STR(fotastate.hash2, hashstr)
-    INFO(HTTPD, "read hash = %s\n", hashstr)
+    LOG_INFO(HTTPD, "read hash = %s\n", hashstr)
 
     if (os_strncmp((char *)fotastate.hash1, (char *)fotastate.hash2, 32) != 0) {
-        ERROR(HTTPD, "hash mismatch\n")
+        LOG_ERROR(HTTPD, "hash mismatch\n")
         goto fail;
     }
 
@@ -228,17 +228,17 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
         int16_t i, j;
 
         if (index((char *)client->url, '?') == NULL) {
-            ERROR(HTTPD, "no signature\n")
+            LOG_ERROR(HTTPD, "no signature\n")
             goto fail;
         }
         start = index((char *)client->url, '?') + 1;
 
         if (bigint_fromhex(&fotastate.cipher, start) > 0) {
-            ERROR(HTTPD, "invalid signature\n")
+            LOG_ERROR(HTTPD, "invalid signature\n")
             goto fail;
         }
         if (rsa_pubkey_decrypt(&fotastate.clear, &fotastate.cipher) > 0) {
-            ERROR(HTTPD, "invalid signature\n")
+            LOG_ERROR(HTTPD, "invalid signature\n")
             goto fail;
         }
 
@@ -250,11 +250,11 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
             fotastate.hash3[i] = fotastate.clear.data[j];
             
         HASH_TO_STR(fotastate.hash3, hashstr)
-        INFO(HTTPD, "sig hash = %s\n", hashstr)
+        LOG_INFO(HTTPD, "sig hash = %s\n", hashstr)
 
         if (os_strncmp((char *)fotastate.hash1,
                        (char *)fotastate.hash3, 32) != 0) {
-            ERROR(HTTPD, "hash mismatch\n")
+            LOG_ERROR(HTTPD, "hash mismatch\n")
             goto fail;
         }
     }
@@ -267,7 +267,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>\n")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "espconn_send() failed\n")
 
     system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
 
@@ -288,7 +288,7 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("<html><body><h1>400 Bad Request</h1></body></html>\n")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "espconn_send() failed\n")
 
     return 1;
 }
@@ -296,13 +296,13 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
 ICACHE_FLASH_ATTR static void fota_reboot(void *arg) {
     (void)arg;
 
-    INFO(HTTPD, "rebooting\n")
+    LOG_INFO(HTTPD, "rebooting\n")
     system_upgrade_reboot();
 
     /*
      * TODO Occasionally the system does not reboot properly,
      *      this code is taken from the Arduino SDK ESP.reset()
      */
-    WARNING(HTTPD, "system_upgrade_reboot() hung?\n")
+    LOG_WARNING(HTTPD, "system_upgrade_reboot() hung?\n")
     ((void (*)(void))0x40000080)();
 }

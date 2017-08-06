@@ -62,7 +62,7 @@ uint16_t httpd_outbuflen;
         if (client->postused == client->postlen) { \
             client->state = HTTPD_STATE_RESPONSE; \
             if (client->bufused > 0) \
-                WARNING(HTTPD, "extra bytes after post data\n") \
+                LOG_WARNING(HTTPD, "extra bytes after post data\n") \
         } \
         else \
             return 0; \
@@ -73,7 +73,7 @@ uint16_t httpd_outbuflen;
     size_t srclen; \
     \
     if ((srclen = os_strlen(src)) >= sizeof(httpd_outbuf)-httpd_outbuflen) { \
-        ERROR(HTTPD, "httpd_outbuf overflow\n") \
+        LOG_ERROR(HTTPD, "httpd_outbuf overflow\n") \
         return 0; \
     } \
     \
@@ -88,12 +88,12 @@ uint16_t httpd_outbuflen;
     \
     if ((len = os_snprintf(buf, sizeof(buf), fmt, ##__VA_ARGS__)) \
             >= sizeof(buf)) { \
-        ERROR(HTTPD, "HTTPD_OUTBUF_PRINTF buf overflow\n") \
+        LOG_ERROR(HTTPD, "HTTPD_OUTBUF_PRINTF buf overflow\n") \
         return 0; \
     } \
     \
     if (len >= sizeof(httpd_outbuf)-httpd_outbuflen) { \
-        ERROR(HTTPD, "httpd_outbuf overflow\n") \
+        LOG_ERROR(HTTPD, "httpd_outbuf overflow\n") \
         return 0; \
     } \
     \

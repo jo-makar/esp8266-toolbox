@@ -44,7 +44,7 @@ ICACHE_FLASH_ATTR int httpd_url_version(HttpdClient *client) {
     httpd_outbuf[81] = '\r';
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "espconn_send() failed\n")
 
     return 1;
 }
@@ -97,7 +97,7 @@ ICACHE_FLASH_ATTR int httpd_url_uptime(HttpdClient *client) {
     httpd_outbuf[81] = '\r';
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "espconn_send() failed\n")
 
     return 1;
 }

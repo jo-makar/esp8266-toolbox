@@ -28,7 +28,7 @@ ICACHE_FLASH_ATTR void user_init() {
     wifi_init();
 
     if (espconn_tcp_set_max_con(MAX_CONN))
-        CRITICAL(MAIN, "espconn_tcp_set_max_con() failed\n")
+        LOG_CRITICAL(MAIN, "espconn_tcp_set_max_con() failed\n")
 
     httpd_init();
 }

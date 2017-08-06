@@ -18,7 +18,7 @@ ICACHE_FLASH_ATTR int httpd_url_404(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("<html><body><h1>404 Not Found</h1></body></html>\n")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "url_404: espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "url_404: espconn_send() failed\n")
 
     return 1;
 }
@@ -34,7 +34,7 @@ ICACHE_FLASH_ATTR int httpd_url_blank(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("<html><body></body></html>\n")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "url_blank: espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "url_blank: espconn_send() failed\n")
 
     return 1;
 }

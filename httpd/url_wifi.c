@@ -31,18 +31,18 @@ ICACHE_FLASH_ATTR int httpd_url_wifi_setup(HttpdClient *client) {
         } else
             next = NULL;
 
-        DEBUG(HTTPD, "key:%s val:%s\n", key, val)
+        LOG_DEBUG(HTTPD, "key:%s val:%s\n", key, val)
 
         if (os_strncmp(key, "ssid", 4) == 0) {
             if (os_strlen(val) >= sizeof(conf.ssid)) {
-                ERROR(HTTPD, "ssid overflow\n");
+                LOG_ERROR(HTTPD, "ssid overflow\n");
                 goto fail;
             }
             os_strncpy((char *)conf.ssid, val, os_strlen(val)+1);
         }
         else if (os_strncmp(key, "pass", 4) == 0) {
             if (os_strlen(val) >= sizeof(conf.password)) {
-                ERROR(HTTPD, "pass overflow\n");
+                LOG_ERROR(HTTPD, "pass overflow\n");
                 goto fail;
             }
             os_strncpy((char *)conf.password, val, os_strlen(val)+1);
@@ -58,7 +58,7 @@ ICACHE_FLASH_ATTR int httpd_url_wifi_setup(HttpdClient *client) {
         goto form;
 
     if (!wifi_station_set_config(&conf)) {
-        ERROR(HTTPD, "wifi_station_set_config failed\n");
+        LOG_ERROR(HTTPD, "wifi_station_set_config failed\n");
         goto fail;
     }
 
@@ -73,7 +73,7 @@ ICACHE_FLASH_ATTR int httpd_url_wifi_setup(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>\n")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "espconn_send() failed\n")
 
     return 1;
 
@@ -124,7 +124,7 @@ ICACHE_FLASH_ATTR int httpd_url_wifi_setup(HttpdClient *client) {
     httpd_outbuf[81] = '\r';
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "espconn_send() failed\n")
     
     return 1;
 
@@ -138,7 +138,7 @@ ICACHE_FLASH_ATTR int httpd_url_wifi_setup(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("<html><body><h1>400 Bad Request</h1></body></html>\n")
 
     if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        ERROR(HTTPD, "espconn_send() failed\n")
+        LOG_ERROR(HTTPD, "espconn_send() failed\n")
 
     return 1;
 }

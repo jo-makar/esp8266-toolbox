@@ -45,7 +45,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
             return 0;
 
         if ((token = parsetoken(buf, nextline-buf, &nexttoken)) == NULL) {
-            WARNING(HTTPD, "incomplete request line\n")
+            LOG_WARNING(HTTPD, "incomplete request line\n")
             return 1;
         }
 
@@ -55,18 +55,18 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
             client->method = HTTPD_METHOD_POST;
         else {
             nexttoken = 0;
-            WARNING(HTTPD, "unsupported method: %s\n", token)
+            LOG_WARNING(HTTPD, "unsupported method: %s\n", token)
             return 1;
         }
 
         if ((token = parsetoken(nexttoken,
                                 nextline-nexttoken, &nexttoken)) == NULL) {
-            WARNING(HTTPD, "incomplete request line\n")
+            LOG_WARNING(HTTPD, "incomplete request line\n")
             return 1;
         }
 
         if ((size_t)(nexttoken-token) > sizeof(client->url)) {
-            WARNING(HTTPD, "client url overflow\n")
+            LOG_WARNING(HTTPD, "client url overflow\n")
             return 1;
         }
 
@@ -96,7 +96,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
                 return 0;
 
             if ((token = parsetoken(buf, nextline-buf, &nexttoken)) == NULL) {
-                WARNING(HTTPD, "bad header line\n")
+                LOG_WARNING(HTTPD, "bad header line\n")
                 return 1;
             }
 
@@ -104,12 +104,12 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
                            MIN(nexttoken-token, 5)) == 0) {
                 if ((token = parsetoken(nexttoken, nextline-nexttoken,
                                         &nexttoken)) == NULL) {
-                    WARNING(HTTPD, "incomplete host header line\n")
+                    LOG_WARNING(HTTPD, "incomplete host header line\n")
                     return 1;
                 }
 
                 if ((size_t)(nexttoken-token) > sizeof(client->host)) {
-                    WARNING(HTTPD, "client host overflow\n")
+                    LOG_WARNING(HTTPD, "client host overflow\n")
                     return 1;
                 }
 
@@ -121,7 +121,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
                                   MIN(nexttoken-token, 15)) == 0) {
                 if ((token = parsetoken(nexttoken, nextline-nexttoken,
                                         &nexttoken)) == NULL) {
-                    WARNING(HTTPD, "incomplete cl header line\n")
+                    LOG_WARNING(HTTPD, "incomplete cl header line\n")
                     return 1;
                 }
 
@@ -136,16 +136,16 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
         os_memmove(client->buf, buf, client->bufused - (buf-client->buf));
         client->bufused -= buf-client->buf;
 
-        INFO(HTTPD, IPSTR ":%u %s url=%s\n",
-             IP2STR(client->conn->proto.tcp->remote_ip),
-             client->conn->proto.tcp->remote_port,
-             client->method == HTTPD_METHOD_GET ? "get" : "post",
-             client->url)
+        LOG_INFO(HTTPD, IPSTR ":%u %s url=%s\n",
+                        IP2STR(client->conn->proto.tcp->remote_ip),
+                        client->conn->proto.tcp->remote_port,
+                        client->method == HTTPD_METHOD_GET ? "get" : "post",
+                        client->url)
 
         if (client->method == HTTPD_METHOD_GET) {
             client->state = HTTPD_STATE_RESPONSE;
             if (client->bufused > 0)
-                WARNING(HTTPD, "extra bytes after get\n")
+                LOG_WARNING(HTTPD, "extra bytes after get\n")
         } else /* if HTTPD_METHOD_POST */
             client->state = HTTPD_STATE_POSTDATA;
     }
@@ -161,7 +161,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
             end = beg + os_strlen(beg);
 
         if ((size_t)(end-beg) > sizeof(baseurl)) {
-            WARNING(HTTPD, "baseurl overflow\n")
+            LOG_WARNING(HTTPD, "baseurl overflow\n")
             return 1;
         }
 

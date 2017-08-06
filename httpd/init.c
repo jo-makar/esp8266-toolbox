@@ -38,47 +38,47 @@ ICACHE_FLASH_ATTR void httpd_init() {
     httpd_conn.proto.tcp = &httpd_tcp;
 
     if (espconn_regist_connectcb(&httpd_conn, httpd_server_conn_cb))
-        CRITICAL(HTTPD, "espconn_regist_connectcb() failed")
+        LOG_CRITICAL(HTTPD, "espconn_regist_connectcb() failed")
        
     if (espconn_regist_reconcb(&httpd_conn, httpd_server_error_cb))
-        CRITICAL(HTTPD, "espconn_regist_reconcb() failed")
+        LOG_CRITICAL(HTTPD, "espconn_regist_reconcb() failed")
 
     if (espconn_accept(&httpd_conn))
-        CRITICAL(HTTPD, "espconn_accept() failed")
+        LOG_CRITICAL(HTTPD, "espconn_accept() failed")
 
     /* TODO Are the defaults for espconn_regist_time(), espconn_set_opt()
             and espconn_set_keepalive() acceptable? */
 
     if (espconn_tcp_set_max_con_allow(&httpd_conn, HTTPD_MAX_CONN))
-        CRITICAL(HTTPD, "espconn_tcp_set_max_con_allow() failed\n")
+        LOG_CRITICAL(HTTPD, "espconn_tcp_set_max_con_allow() failed\n")
 
     if (!system_os_task(httpd_task, HTTPD_TASK_PRIO, httpd_task_queue,
                         sizeof(httpd_task_queue)/sizeof(*httpd_task_queue)))
-        CRITICAL(HTTPD, "system_os_task() failed\n")
+        LOG_CRITICAL(HTTPD, "system_os_task() failed\n")
 }
 
 ICACHE_FLASH_ATTR static void httpd_server_conn_cb(void *arg) {
     struct espconn *conn = arg;
     size_t i;
 
-    DEBUG(HTTPD, "connect: " IPSTR ":%u\n",
-                 IP2STR(conn->proto.tcp->remote_ip),
-                 conn->proto.tcp->remote_port)
+    LOG_DEBUG(HTTPD, "connect: " IPSTR ":%u\n",
+                     IP2STR(conn->proto.tcp->remote_ip),
+                     conn->proto.tcp->remote_port)
 
     /* Indicate this connection has not been fully initialized */
     conn->reverse = NULL;
 
     if (espconn_regist_disconcb(conn, httpd_client_disconn_cb)) {
-        ERROR(HTTPD, "connect: espconn_regist_disconcb() failed\n")
+        LOG_ERROR(HTTPD, "connect: espconn_regist_disconcb() failed\n")
         if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
-            ERROR(HTTPD, "connect: system_os_post() failed\n")
+            LOG_ERROR(HTTPD, "connect: system_os_post() failed\n")
         return;
     }
 
     if (espconn_regist_recvcb(conn, httpd_client_recv_cb)) {
-        ERROR(HTTPD, "connect: espconn_regist_recvcb() failed\n")
+        LOG_ERROR(HTTPD, "connect: espconn_regist_recvcb() failed\n")
         if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
-            ERROR(HTTPD, "connect: system_os_post() failed\n")
+            LOG_ERROR(HTTPD, "connect: system_os_post() failed\n")
         return;
     }
 
@@ -86,9 +86,9 @@ ICACHE_FLASH_ATTR static void httpd_server_conn_cb(void *arg) {
         if (!httpd_clients[i].inuse)
             break;
     if (i == sizeof(httpd_clients)/sizeof(*httpd_clients)) {
-        WARNING(HTTPD, "connect: too many clients\n")
+        LOG_WARNING(HTTPD, "connect: too many clients\n")
         if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
-            ERROR(HTTPD, "connect: system_os_post() failed\n")
+            LOG_ERROR(HTTPD, "connect: system_os_post() failed\n")
         return;
     }
 
@@ -104,39 +104,39 @@ ICACHE_FLASH_ATTR static void httpd_server_error_cb(void *arg, int8_t err) {
 
     switch (err) {
         case ESPCONN_TIMEOUT:
-            ERROR(HTTPD, "error: timeout " IPSTR ":%u\n",
-                          IP2STR(conn->proto.tcp->remote_ip),
-                          conn->proto.tcp->remote_port)
+            LOG_ERROR(HTTPD, "error: timeout " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
             break;
         case ESPCONN_ABRT:
-            ERROR(HTTPD, "error: abrt " IPSTR ":%u\n",
-                          IP2STR(conn->proto.tcp->remote_ip),
-                          conn->proto.tcp->remote_port)
+            LOG_ERROR(HTTPD, "error: abrt " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
             break;
         case ESPCONN_RST:
-            ERROR(HTTPD, "error: rst " IPSTR ":%u\n",
-                          IP2STR(conn->proto.tcp->remote_ip),
-                          conn->proto.tcp->remote_port)
+            LOG_ERROR(HTTPD, "error: rst " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
             break;
         case ESPCONN_CLSD:
-            ERROR(HTTPD, "error: clsd " IPSTR ":%u\n",
-                          IP2STR(conn->proto.tcp->remote_ip),
-                          conn->proto.tcp->remote_port)
+            LOG_ERROR(HTTPD, "error: clsd " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
             break;
         case ESPCONN_CONN:
-            ERROR(HTTPD, "error: conn " IPSTR ":%u\n",
-                          IP2STR(conn->proto.tcp->remote_ip),
-                          conn->proto.tcp->remote_port)
+            LOG_ERROR(HTTPD, "error: conn " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
             break;
         case ESPCONN_HANDSHAKE:
-            ERROR(HTTPD, "error: handshake " IPSTR ":%u\n",
-                          IP2STR(conn->proto.tcp->remote_ip),
-                          conn->proto.tcp->remote_port)
+            LOG_ERROR(HTTPD, "error: handshake " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
             break;
         default:
-            ERROR(HTTPD, "error: unknown (%02x) " IPSTR ":%u\n",
-                          err, IP2STR(conn->proto.tcp->remote_ip),
-                          conn->proto.tcp->remote_port)
+            LOG_ERROR(HTTPD, "error: unknown (%02x) " IPSTR ":%u\n",
+                             err, IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
             break;
     }
 
@@ -151,9 +151,9 @@ ICACHE_FLASH_ATTR static void httpd_client_disconn_cb(void *arg) {
     struct espconn *conn = arg;
     HttpdClient *client;
 
-    DEBUG(HTTPD, "disconnect: " IPSTR ":%u\n",
-                 IP2STR(conn->proto.tcp->remote_ip),
-                 conn->proto.tcp->remote_port)
+    LOG_DEBUG(HTTPD, "disconnect: " IPSTR ":%u\n",
+                     IP2STR(conn->proto.tcp->remote_ip),
+                     conn->proto.tcp->remote_port)
 
     if ((client = conn->reverse) != NULL)
         client->inuse = 0;
@@ -164,22 +164,22 @@ ICACHE_FLASH_ATTR static void httpd_client_recv_cb(void *arg, char *data,
     struct espconn *conn = arg;
     HttpdClient *client;
 
-    DEBUG(HTTPD, "recv: " IPSTR ":%u len=%u\n",
-                 IP2STR(conn->proto.tcp->remote_ip),
-                 conn->proto.tcp->remote_port, len)
+    LOG_DEBUG(HTTPD, "recv: " IPSTR ":%u len=%u\n",
+                     IP2STR(conn->proto.tcp->remote_ip),
+                     conn->proto.tcp->remote_port, len)
 
     /* Should never happen */
     if ((client = conn->reverse) == NULL) {
-        ERROR(HTTPD, "recv: client not initialized\n")
+        LOG_ERROR(HTTPD, "recv: client not initialized\n")
         if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
-            ERROR(HTTPD, "recv: system_os_post() failed\n")
+            LOG_ERROR(HTTPD, "recv: system_os_post() failed\n")
         return;
     }
 
     if (client->bufused + len > sizeof(client->buf)) {
-        WARNING(HTTPD, "recv: client buffer overflow\n")
+        LOG_WARNING(HTTPD, "recv: client buffer overflow\n")
         if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
-            ERROR(HTTPD, "recv: system_os_post() failed\n")
+            LOG_ERROR(HTTPD, "recv: system_os_post() failed\n")
         return;
     }
 
@@ -188,7 +188,7 @@ ICACHE_FLASH_ATTR static void httpd_client_recv_cb(void *arg, char *data,
 
     if (httpd_process(client)) {
         if (!system_os_post(HTTPD_TASK_PRIO, HTTPD_DISCONN, (uint32_t)conn))
-            ERROR(HTTPD, "recv: system_os_post() failed\n")
+            LOG_ERROR(HTTPD, "recv: system_os_post() failed\n")
     }
 }
 
@@ -199,20 +199,20 @@ ICACHE_FLASH_ATTR static void httpd_task(os_event_t *evt) {
         case HTTPD_DISCONN: {
             conn = (struct espconn *)evt->par;
 
-            DEBUG(HTTPD, "task: disconnect " IPSTR ":%u\n",
-                         IP2STR(conn->proto.tcp->remote_ip),
-                         conn->proto.tcp->remote_port)
+            LOG_DEBUG(HTTPD, "task: disconnect " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
 
             if (espconn_disconnect(conn))
-                ERROR(HTTPD, "task: espconn_disconnect() failed\n")
+                LOG_ERROR(HTTPD, "task: espconn_disconnect() failed\n")
             if (espconn_delete(conn))
-                ERROR(HTTPD, "task: espconn_delete() failed\n")
+                LOG_ERROR(HTTPD, "task: espconn_delete() failed\n")
 
             break;
         }
 
         default:
-            ERROR(HTTPD, "task: unknown signal (%04x)\n", evt->sig)
+            LOG_ERROR(HTTPD, "task: unknown signal (%04x)\n", evt->sig)
             break;
     }
 }
