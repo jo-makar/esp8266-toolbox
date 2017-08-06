@@ -31,8 +31,7 @@ ICACHE_FLASH_ATTR void _log_entry(const char *level, const char *file, int line,
                                             level, file, line, entry);
         _log.urlbuf[0] = first;
 
-        os_memmove(_log.urlbuf + len+1, _log.urlbuf,
-                    sizeof(_log.urlbuf)-(len+1));
+        os_memmove(_log.urlbuf + len, _log.urlbuf, sizeof(_log.urlbuf)-len);
 
         os_snprintf(_log.urlbuf, len+1, "%u.%03u: %s: %s:%d %s",
                                         time/1000000, (time%1000000)/1000,

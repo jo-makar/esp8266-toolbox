@@ -14,7 +14,6 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] RSA encryption/decryption implementation
 - [x] Signed OTA firmware updates
   - Using RSA signature verification
-- [ ] Add /logs to show last 100 log lines in a circular buffer
 - [ ] SMTP client framework for email/text alerts
 - [ ] Light, motion detection sensor drivers
 - [ ] Temp., humidity sensor drivers
@@ -50,6 +49,7 @@ Url | Description
 --- | -----------
 /fota/bin | Currently executing userbin/partition
 /fota/push | Push-based OTA updates (described above)
+/logs | Buffer of most recent log entries
 /uptime | System uptime
 /version | Application version
 /wifi/setup | WiFi SSID/password setup

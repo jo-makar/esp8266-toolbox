@@ -43,6 +43,7 @@ const HttpdUrl httpd_urls[] = {
     { "/",           httpd_url_blank },
     { "/fota/bin",   httpd_url_fota_bin },
     { "/fota/push",  httpd_url_fota_push },
+    { "/logs",       httpd_url_logs },
     { "/uptime",     httpd_url_uptime },
     { "/version",    httpd_url_version },
     { "/wifi/setup", httpd_url_wifi_setup },

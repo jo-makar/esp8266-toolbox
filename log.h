@@ -4,6 +4,7 @@
 #include <osapi.h>
 #include <user_interface.h>
 
+#include "httpd/private.h"
 #include "config.h"
 #include "missing-decls.h"
 
@@ -12,7 +13,7 @@ typedef struct {
     uint8_t lock;
 
     #if LOG_URLBUF_ENABLE
-        char urlbuf[3*1024];
+        char urlbuf[HTTPD_OUTBUF_MAXLEN*3/4];
     #endif
 } Log;
 extern Log _log;

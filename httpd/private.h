@@ -46,7 +46,6 @@ typedef struct {
 extern const HttpdUrl httpd_urls[];
 extern const size_t httpd_urlcount;
 
-#define HTTPD_OUTBUF_MAXLEN 1024
 uint8_t httpd_outbuf[HTTPD_OUTBUF_MAXLEN];
 uint16_t httpd_outbuflen;
 
@@ -113,5 +112,7 @@ int httpd_url_version(HttpdClient *client);
 int httpd_url_uptime(HttpdClient *client);
 
 int httpd_url_wifi_setup(HttpdClient *client);
+
+int httpd_url_logs(HttpdClient *client);
 
 #endif
