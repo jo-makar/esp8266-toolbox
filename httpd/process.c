@@ -136,21 +136,11 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
         os_memmove(client->buf, buf, client->bufused - (buf-client->buf));
         client->bufused -= buf-client->buf;
 
-        #if HTTPD_LOG_LEVEL <= LEVEL_INFO
-        {
-            INFO_PREFIX
-
-            os_printf(IPSTR ":%u ", IP2STR(client->conn->proto.tcp->remote_ip),
-                                    client->conn->proto.tcp->remote_port);
-
-            if (client->method == HTTPD_METHOD_GET)
-                os_printf("get ");
-            else /* if HTTPD_METHOD_POST */
-                os_printf("post len=%u ", client->postlen);
-
-            os_printf("url=%s\n", client->url);
-        }
-        #endif
+        INFO(HTTPD, IPSTR ":%u %s url=%s\n",
+             IP2STR(client->conn->proto.tcp->remote_ip),
+             client->conn->proto.tcp->remote_port,
+             client->method == HTTPD_METHOD_GET ? "get" : "post",
+             client->url)
 
         if (client->method == HTTPD_METHOD_GET) {
             client->state = HTTPD_STATE_RESPONSE;

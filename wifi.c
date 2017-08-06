@@ -61,26 +61,36 @@ ICACHE_FLASH_ATTR void wifi_init() {
 }
 
 ICACHE_FLASH_ATTR static void wifi_evt_cb(System_Event_t *evt) {
-    size_t len;
-
     switch (evt->event) {
         case EVENT_STAMODE_CONNECTED: {
             Event_StaMode_Connected_t *info = &evt->event_info.connected;
-            len = MIN(strnlen((char *)info->ssid, sizeof(info->ssid)),
-                      info->ssid_len);
-            DEBUG(MAIN, "station: connected ssid=%.*s channel=%d\n",
-                  len, info->ssid, info->channel)
-            /* TODO uint8 bssid[6]? */
+
+            char ssid[sizeof(info->ssid) + 1];
+            size_t len = MIN(strnlen((char *)info->ssid, sizeof(info->ssid)),
+                             info->ssid_len);
+
+            /* %.*s is not supported unfortunately */
+            os_strncpy(ssid, (char *)info->ssid, len);
+            ssid[len] = 0;
+
+            DEBUG(MAIN, "station: connected ssid=%s channel=%d\n",
+                        ssid, info->channel)
             break;
         }
 
         case EVENT_STAMODE_DISCONNECTED: {
             Event_StaMode_Disconnected_t *info = &evt->event_info.disconnected;
-            len = MIN(strnlen((char *)info->ssid, sizeof(info->ssid)),
-                      info->ssid_len);
-            DEBUG(MAIN, "station: disconnected ssid=%.*s reason=0x%02x\n",
-                  len, info->ssid, info->reason)
-            /* TODO uint8 bssid[6]? */
+
+            char ssid[sizeof(info->ssid) + 1];
+            size_t len = MIN(strnlen((char *)info->ssid, sizeof(info->ssid)),
+                             info->ssid_len);
+
+            /* %.*s is not supported unfortunately */
+            os_strncpy(ssid, (char *)info->ssid, len);
+            ssid[len] = 0;
+
+            DEBUG(MAIN, "station: disconnected ssid=%s reason=0x%02x\n",
+                        ssid, info->reason)
             break;
         }
 

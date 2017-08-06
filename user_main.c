@@ -14,6 +14,8 @@
 #endif
 
 ICACHE_FLASH_ATTR void user_init() {
+    log_init();
+
     /*
      * The SDK function system_get_time() overflows about every 71 mins.
      * This timer ensure that overflow is handled cleanly,

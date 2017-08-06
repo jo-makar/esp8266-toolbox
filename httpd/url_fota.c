@@ -56,6 +56,16 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
     uint32_t curaddr;
     size_t len;
     uint32_t addr;
+    char hashstr[64+1];
+
+    #define HASH_TO_STR(h, s) { \
+        uint8_t i; \
+        \
+        for (i=0; i<32; i++) \
+            os_snprintf(s+i*2, 2, "%02x", h[i]); \
+        \
+        s[64] = 0; \
+    }
 
     if (client->postused == 0) {
         fotastate.client = client;
@@ -168,17 +178,8 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
 
     sha256_done(&fotastate.sha256, fotastate.hash1);
 
-    #if HTTPD_LOG_LEVEL <= LEVEL_INFO
-    {
-        INFO_PREFIX
-        uint8_t i;
-
-        os_printf("bin hash = ");
-        for (i=0; i<32; i++)
-            os_printf("%02x", fotastate.hash1[i]);
-        os_printf("\n");
-    }
-    #endif
+    HASH_TO_STR(fotastate.hash1, hashstr)
+    INFO(HTTPD, "bin hash = %s\n", hashstr)
 
     /*
      * Read the just written application
@@ -209,17 +210,8 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
 
     sha256_done(&fotastate.sha256, fotastate.hash2);
 
-    #if HTTPD_LOG_LEVEL <= LEVEL_INFO
-    {
-        INFO_PREFIX
-        uint8_t i;
-
-        os_printf("read hash = ");
-        for (i=0; i<32; i++)
-            os_printf("%02x", fotastate.hash2[i]);
-        os_printf("\n");
-    }
-    #endif
+    HASH_TO_STR(fotastate.hash2, hashstr)
+    INFO(HTTPD, "read hash = %s\n", hashstr)
 
     if (os_strncmp((char *)fotastate.hash1, (char *)fotastate.hash2, 32) != 0) {
         ERROR(HTTPD, "hash mismatch\n")
@@ -257,17 +249,8 @@ ICACHE_FLASH_ATTR int httpd_url_fota_push(HttpdClient *client) {
         for (j=bytes-1; j>=0; i++, j--)
             fotastate.hash3[i] = fotastate.clear.data[j];
             
-        #if HTTPD_LOG_LEVEL <= LEVEL_INFO
-        {
-            INFO_PREFIX
-            uint8_t i;
-
-            os_printf("sig hash = ");
-            for (i=0; i<32; i++)
-                os_printf("%02x", fotastate.hash3[i]);
-            os_printf("\n");
-        }
-        #endif
+        HASH_TO_STR(fotastate.hash3, hashstr)
+        INFO(HTTPD, "sig hash = %s\n", hashstr)
 
         if (os_strncmp((char *)fotastate.hash1,
                        (char *)fotastate.hash3, 32) != 0) {

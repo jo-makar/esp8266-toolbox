@@ -102,38 +102,43 @@ ICACHE_FLASH_ATTR static void httpd_server_conn_cb(void *arg) {
 ICACHE_FLASH_ATTR static void httpd_server_error_cb(void *arg, int8_t err) {
     struct espconn *conn = arg;
 
-    #if HTTPD_LOG_LEVEL <= LEVEL_ERROR
-    {
-        ERROR_PREFIX
-
-        switch (err) {
-            case ESPCONN_TIMEOUT:
-                os_printf("error: timeout ");
-                break;
-            case ESPCONN_ABRT:
-                os_printf("error: abrt ");
-                break;
-            case ESPCONN_RST:
-                os_printf("error: rst ");
-                break;
-            case ESPCONN_CLSD:
-                os_printf("error: clsd ");
-                break;
-            case ESPCONN_CONN:
-                os_printf("error: conn ");
-                break;
-            case ESPCONN_HANDSHAKE:
-                os_printf("error: handshake ");
-                break;
-            default:
-                os_printf("error: unknown (%02x) ");
-                break;
-        }
-
-        os_printf(IPSTR ":%u\n", IP2STR(conn->proto.tcp->remote_ip),
-                conn->proto.tcp->remote_port);
+    switch (err) {
+        case ESPCONN_TIMEOUT:
+            ERROR(HTTPD, "error: timeout " IPSTR ":%u\n",
+                          IP2STR(conn->proto.tcp->remote_ip),
+                          conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_ABRT:
+            ERROR(HTTPD, "error: abrt " IPSTR ":%u\n",
+                          IP2STR(conn->proto.tcp->remote_ip),
+                          conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_RST:
+            ERROR(HTTPD, "error: rst " IPSTR ":%u\n",
+                          IP2STR(conn->proto.tcp->remote_ip),
+                          conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_CLSD:
+            ERROR(HTTPD, "error: clsd " IPSTR ":%u\n",
+                          IP2STR(conn->proto.tcp->remote_ip),
+                          conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_CONN:
+            ERROR(HTTPD, "error: conn " IPSTR ":%u\n",
+                          IP2STR(conn->proto.tcp->remote_ip),
+                          conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_HANDSHAKE:
+            ERROR(HTTPD, "error: handshake " IPSTR ":%u\n",
+                          IP2STR(conn->proto.tcp->remote_ip),
+                          conn->proto.tcp->remote_port)
+            break;
+        default:
+            ERROR(HTTPD, "error: unknown (%02x) " IPSTR ":%u\n",
+                          err, IP2STR(conn->proto.tcp->remote_ip),
+                          conn->proto.tcp->remote_port)
+            break;
     }
-    #endif
 
     /*
      * TODO How should this be handled?  Likely dependent on the error.
