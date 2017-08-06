@@ -138,8 +138,6 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
 
         #if HTTPD_LOG_LEVEL <= LEVEL_INFO
         {
-            char url[50];
-
             INFO_PREFIX
 
             os_printf(IPSTR ":%u ", IP2STR(client->conn->proto.tcp->remote_ip),
@@ -150,14 +148,7 @@ ICACHE_FLASH_ATTR int httpd_process(HttpdClient *client) {
             else /* if HTTPD_METHOD_POST */
                 os_printf("post len=%u ", client->postlen);
 
-            os_strncpy(url, (char *)client->url, sizeof(url));
-            if (os_strlen((char *)client->url) + 1 > sizeof(url)) {
-                url[sizeof(url)-1] = 0;
-                url[sizeof(url)-2] = '.';
-                url[sizeof(url)-3] = '.';
-                url[sizeof(url)-4] = '.';
-            }
-            os_printf("url=%s\n", url);
+            os_printf("url=%s\n", client->url);
         }
         #endif
 

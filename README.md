@@ -14,7 +14,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] RSA encryption/decryption implementation
 - [x] Signed OTA firmware updates
   - Using RSA signature verification
-- [ ] Add WiFi urls: /wifi/{setup,info}
+- [ ] Add WiFi urls: /wifi/info
 - [ ] Add /logs to show last 100 log lines in a circular buffer
 - [ ] SMTP client framework for email/text alerts
 - [ ] Light, motion detection sensor drivers
@@ -66,6 +66,7 @@ Url | Description
 - The default WiFi SSID is `esp-<system id in hex>`
 - The default WiFi password is in /config.h
 - The default IP address is 192.168.4.1
+- Go to /wifi/setup to set the WiFi station configuration
 
 # Debug output
 A logging system modelled after syslog is provided for output over UART0.  The
