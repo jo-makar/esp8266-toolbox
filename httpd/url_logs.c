@@ -50,11 +50,12 @@ ICACHE_FLASH_ATTR int httpd_url_logs(HttpdClient *client) {
 
         HTTPD_OUTBUF_APPEND("</pre>\n")
 
-        /* Tell the browser to refresh periodically */
-        HTTPD_OUTBUF_APPEND("<script type=\"text/javascript\">\n")
-        HTTPD_OUTBUF_APPEND("setTimeout(function() {\n")
-        HTTPD_OUTBUF_APPEND("    window.location.reload(true); }, 20000);\n")
-        HTTPD_OUTBUF_APPEND("</script>\n")
+        if (os_strstr((char *)client->url, "?refresh") != NULL) {
+            HTTPD_OUTBUF_APPEND("<script type=\"text/javascript\">\n")
+            HTTPD_OUTBUF_APPEND("setTimeout(function() {\n")
+            HTTPD_OUTBUF_APPEND("    window.location.reload(true); }, 20000);\n")
+            HTTPD_OUTBUF_APPEND("</script>\n")
+        }
 
         HTTPD_OUTBUF_APPEND("</body></html>\n")
 
