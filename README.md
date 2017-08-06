@@ -90,6 +90,8 @@ The applications `uart0.py` and `uart0/uart0` are provided for debugging output.
 `uart0/uart0` is for USB-UART bridges that don't inherently support non-standard
 baudrates.
 
+The most recent log entries are also available over HTTP at /logs.
+
 # Coding style
 - 80 character line limits (for multiple horizontally-split editor views)
 - Prefer to put function-scope variables at the top of the function; to help
