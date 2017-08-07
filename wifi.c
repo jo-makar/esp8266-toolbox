@@ -7,6 +7,8 @@
 #include "log.h"
 #include "missing-decls.h"
 
+extern void user_init_net();
+
 static void wifi_evt_cb(System_Event_t *evt);
 
 ICACHE_FLASH_ATTR void wifi_init() {
@@ -107,6 +109,9 @@ ICACHE_FLASH_ATTR static void wifi_evt_cb(System_Event_t *evt) {
                             " mask=" IPSTR " gw=" IPSTR "\n",
                             IP2STR(&info->ip), IP2STR(&info->mask),
                             IP2STR(&info->gw))
+
+            user_init_net();
+
             break;
         }
         

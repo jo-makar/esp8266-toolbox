@@ -20,7 +20,7 @@ PORT ?= /dev/ttyUSB0
 
 #################################################################################
 
-SRC = $(wildcard *.c crypto/*.c httpd/*.c)
+SRC = $(wildcard *.c crypto/*.c httpd/*.c smtp/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 
