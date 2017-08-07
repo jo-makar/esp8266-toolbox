@@ -299,10 +299,17 @@ ICACHE_FLASH_ATTR static void fota_reboot(void *arg) {
     LOG_INFO(FOTA, "rebooting\n")
     system_upgrade_reboot();
 
-    /*
-     * TODO Occasionally the system does not reboot properly,
-     *      this code is taken from the Arduino SDK ESP.reset()
-     */
-    LOG_WARNING(FOTA, "system_upgrade_reboot() hung?\n")
-    ((void (*)(void))0x40000080)();
+    /* TODO Apparently sometimes system_upgrade_reboot() doesn't reboot */
+    {
+        uint16_t i;
+
+        for (i=0; i<3*1000; i++) {
+            if (i>0 && i%1000==0)
+                system_soft_wdt_feed();
+            os_delay_us(1000);
+        }
+
+        LOG_WARNING(FOTA, "system_upgrade_reboot() didn't reboot\n")
+        system_restart();
+    }
 }

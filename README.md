@@ -50,6 +50,7 @@ Url | Description
 /fota/bin | Currently executing userbin/partition
 /fota/push | Push-based OTA updates (described above)
 /logs | Most recent log entries (?refresh to refresh automatically)
+/reset | System reset
 /uptime | System uptime
 /version | Application version
 /wifi/setup | WiFi SSID/password setup

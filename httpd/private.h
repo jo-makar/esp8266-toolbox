@@ -115,4 +115,6 @@ int httpd_url_wifi_setup(HttpdClient *client);
 
 int httpd_url_logs(HttpdClient *client);
 
+int httpd_url_reset(HttpdClient *client);
+
 #endif
