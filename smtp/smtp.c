@@ -54,6 +54,7 @@ ICACHE_FLASH_ATTR void smtp_send_dns(const char *host, ip_addr_t *ip,
     else {
         LOG_INFO(SMTP, "smtp_send_dns host=" IPSTR "\n", IP2STR(ip));
         smtp.state = SMTP_STATE_DNS_DONE;
+        os_memcpy(&smtp.ip, ip, sizeof(smtp.ip));
     }
 }
 
@@ -81,19 +82,27 @@ ICACHE_FLASH_ATTR int smtp_send(const char *to, const char *subj,
     }
     if (i == 10*1000+1) {
         LOG_ERROR(SMTP, "dns timeout\n")
+        smtp.state = SMTP_STATE_READY;
         return 1;
     }
 
-    /* FIXME STOPPED */
-    /*
     os_bzero(&smtp.tcp, sizeof(smtp.tcp));
-    tcp.remote_port = smtp.port;
-    tcp.remote_ip = ...
+    smtp.tcp.remote_port = smtp.port;
+    smtp.tcp.remote_ip[0] = smtp.ip.addr >> 24;
+    smtp.tcp.remote_ip[1] = smtp.ip.addr >> 16;
+    smtp.tcp.remote_ip[2] = smtp.ip.addr >> 8;
+    smtp.tcp.remote_ip[3] = smtp.ip.addr;
 
     os_bzero(&smtp.conn, sizeof(smtp.conn));
     smtp.conn.type = ESPCONN_TCP;
-    smtp.conn.proto.tcp = ESPCONN_TCP;
-    */
+    smtp.conn.proto.tcp = &smtp.tcp;
+
+    /*
+     * FIXME STOPPED
+     * espconn_regist_connectcb, reconcb (secure versions?)
+     * espconn_secure_connect
+     * in connect callback: espconn_regist_recvcb, sentcb, disconcb
+     */
 
     return 0;
 }

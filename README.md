@@ -15,6 +15,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] Signed OTA firmware updates
   - Using RSA signature verification
 - [ ] SMTP client framework for email/text alerts
+  - Supporting GMail SMTP servers
 - [ ] Light, motion detection sensor drivers
 - [ ] Temp., humidity sensor drivers
 
