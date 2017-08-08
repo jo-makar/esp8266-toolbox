@@ -11,6 +11,8 @@ static void smtp_error_cb(void *arg, int8_t err);
 static void smtp_disconn_cb(void *arg);
 static void smtp_recv_cb(void *arg, char *data, unsigned short len);
 
+static void smtp_disconnect();
+
 ICACHE_FLASH_ATTR void smtp_init_gmail(const char *user, const char *pass) {
     size_t len;
 
@@ -132,13 +134,21 @@ ICACHE_FLASH_ATTR void smtp_conn_cb(void *arg) {
 
     if (espconn_regist_disconcb(conn, smtp_disconn_cb)) {
         LOG_ERROR(HTTPD, "connect: espconn_regist_disconcb() failed\n")
-        /* FIXME STOPPED Setup a timer to disconnect */
+
+        os_timer_disarm(&smtp.timer);
+        os_timer_setfn(&smtp.timer, smtp_disconnect, NULL);
+        os_timer_arm(&smtp.timer, 3000, false);
+
         return;
     }
 
     if (espconn_regist_recvcb(conn, smtp_recv_cb)) {
         LOG_ERROR(HTTPD, "connect: espconn_regist_recvcb() failed\n")
-        /* FIXME STOPPED Setup a timer to disconnect */
+
+        os_timer_disarm(&smtp.timer);
+        os_timer_setfn(&smtp.timer, smtp_disconnect, NULL);
+        os_timer_arm(&smtp.timer, 3000, false);
+
         return;
     }
 
@@ -199,4 +209,13 @@ ICACHE_FLASH_ATTR void smtp_disconn_cb(void *arg) {
 
 ICACHE_FLASH_ATTR void smtp_recv_cb(void *arg, char *data, unsigned short len) {
     /* FIXME */
+}
+
+ICACHE_FLASH_ATTR void smtp_disconnect() {
+    LOG_DEBUG(SMTP, "disconnect: " IPSTR ":%u\n",
+                    IP2STR(smtp.conn.proto.tcp->remote_ip),
+                    smtp.conn.proto.tcp->remote_port)
+
+    if (espconn_secure_disconnect(&smtp.conn))
+        LOG_ERROR(SMTP, "espconn_secure_disconnect() failed\n");
 }

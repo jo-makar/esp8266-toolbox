@@ -22,4 +22,6 @@ typedef struct {
     struct espconn conn;
     esp_tcp tcp;
     esp_udp udp;
+
+    os_timer_t timer;
 } Smtp;
