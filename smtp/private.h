@@ -23,5 +23,3 @@ typedef struct {
     esp_tcp tcp;
     esp_udp udp;
 } Smtp;
-
-extern Smtp smtp;

@@ -37,24 +37,34 @@ ICACHE_FLASH_ATTR void httpd_init() {
 
     httpd_conn.proto.tcp = &httpd_tcp;
 
-    if (espconn_regist_connectcb(&httpd_conn, httpd_server_conn_cb))
-        LOG_CRITICAL(HTTPD, "espconn_regist_connectcb() failed")
+    if (espconn_regist_connectcb(&httpd_conn, httpd_server_conn_cb)) {
+        LOG_CRITICAL(HTTPD, "espconn_regist_connectcb() failed\n")
+        return;
+    }
        
-    if (espconn_regist_reconcb(&httpd_conn, httpd_server_error_cb))
-        LOG_CRITICAL(HTTPD, "espconn_regist_reconcb() failed")
+    if (espconn_regist_reconcb(&httpd_conn, httpd_server_error_cb)) {
+        LOG_CRITICAL(HTTPD, "espconn_regist_reconcb() failed\n")
+        return;
+    }
 
-    if (espconn_accept(&httpd_conn))
-        LOG_CRITICAL(HTTPD, "espconn_accept() failed")
+    if (espconn_accept(&httpd_conn)) {
+        LOG_CRITICAL(HTTPD, "espconn_accept() failed\n")
+        return;
+    }
 
     /* TODO Are the defaults for espconn_regist_time(), espconn_set_opt()
             and espconn_set_keepalive() acceptable? */
 
-    if (espconn_tcp_set_max_con_allow(&httpd_conn, HTTPD_MAX_CONN))
+    if (espconn_tcp_set_max_con_allow(&httpd_conn, HTTPD_MAX_CONN)) {
         LOG_CRITICAL(HTTPD, "espconn_tcp_set_max_con_allow() failed\n")
+        return;
+    }
 
     if (!system_os_task(httpd_task, HTTPD_TASK_PRIO, httpd_task_queue,
-                        sizeof(httpd_task_queue)/sizeof(*httpd_task_queue)))
+                        sizeof(httpd_task_queue)/sizeof(*httpd_task_queue))) {
         LOG_CRITICAL(HTTPD, "system_os_task() failed\n")
+        return;
+    }
 }
 
 ICACHE_FLASH_ATTR static void httpd_server_conn_cb(void *arg) {

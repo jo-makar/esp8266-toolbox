@@ -3,7 +3,13 @@
 #include "../log.h"
 #include "smtp.h"
 
-Smtp smtp;
+static Smtp smtp;
+
+static void smtp_conn_cb(void *arg);
+static void smtp_error_cb(void *arg, int8_t err);
+
+static void smtp_disconn_cb(void *arg);
+static void smtp_recv_cb(void *arg, char *data, unsigned short len);
 
 ICACHE_FLASH_ATTR void smtp_init_gmail(const char *user, const char *pass) {
     size_t len;
@@ -97,12 +103,100 @@ ICACHE_FLASH_ATTR int smtp_send(const char *to, const char *subj,
     smtp.conn.type = ESPCONN_TCP;
     smtp.conn.proto.tcp = &smtp.tcp;
 
-    /*
-     * FIXME STOPPED
-     * espconn_regist_connectcb, reconcb (secure versions?)
-     * espconn_secure_connect
-     * in connect callback: espconn_regist_recvcb, sentcb, disconcb
-     */
+    if (espconn_regist_connectcb(&smtp.conn, smtp_conn_cb)) {
+        LOG_ERROR(SMTP, "espconn_regist_connectcb() failed\n");
+        return 1;
+    }
+
+    if (espconn_regist_reconcb(&smtp.conn, smtp_error_cb)) {
+        LOG_ERROR(SMTP, "espconn_regist_connectcb() failed\n");
+        return 1;
+    }
+
+    if (!espconn_secure_connect(&smtp.conn)) {
+        LOG_ERROR(SMTP, "espconn_secure_connect() failed\n");
+        return 1;
+    }
+
+    /* FIXME STOPPED */
 
     return 0;
+}
+
+ICACHE_FLASH_ATTR void smtp_conn_cb(void *arg) {
+    struct espconn *conn = arg;
+
+    LOG_DEBUG(SMTP, "connect: " IPSTR ":%u\n",
+                    IP2STR(conn->proto.tcp->remote_ip),
+                    conn->proto.tcp->remote_port)
+
+    if (espconn_regist_disconcb(conn, smtp_disconn_cb)) {
+        LOG_ERROR(HTTPD, "connect: espconn_regist_disconcb() failed\n")
+        /* FIXME STOPPED Setup a timer to disconnect */
+        return;
+    }
+
+    if (espconn_regist_recvcb(conn, smtp_recv_cb)) {
+        LOG_ERROR(HTTPD, "connect: espconn_regist_recvcb() failed\n")
+        /* FIXME STOPPED Setup a timer to disconnect */
+        return;
+    }
+
+    /* FIXME Change smtp.state */
+}
+
+ICACHE_FLASH_ATTR void smtp_error_cb(void *arg, int8_t err) {
+    struct espconn *conn = arg;
+
+    switch (err) {
+        case ESPCONN_TIMEOUT:
+            LOG_ERROR(HTTPD, "error: timeout " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_ABRT:
+            LOG_ERROR(HTTPD, "error: abrt " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_RST:
+            LOG_ERROR(HTTPD, "error: rst " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_CLSD:
+            LOG_ERROR(HTTPD, "error: clsd " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_CONN:
+            LOG_ERROR(HTTPD, "error: conn " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_HANDSHAKE:
+            LOG_ERROR(HTTPD, "error: handshake " IPSTR ":%u\n",
+                             IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
+            break;
+        default:
+            LOG_ERROR(HTTPD, "error: unknown (%02x) " IPSTR ":%u\n",
+                             err, IP2STR(conn->proto.tcp->remote_ip),
+                             conn->proto.tcp->remote_port)
+            break;
+    }
+
+    /*
+     * TODO How should this be handled?  Likely dependent on the error.
+     *      Can verify this is the server socket by checking conn->state.
+     *      Unsure if a espconn_disconnect() is needed or just espconn_delete().
+     */
+}
+
+ICACHE_FLASH_ATTR void smtp_disconn_cb(void *arg) {
+    /* FIXME */
+}
+
+ICACHE_FLASH_ATTR void smtp_recv_cb(void *arg, char *data, unsigned short len) {
+    /* FIXME */
 }

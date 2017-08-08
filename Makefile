@@ -44,7 +44,7 @@ LDFLAGS = -EL -nostdlib -static --gc-sections
 
 # The --start/end-group is necessary for the references between the libraries
 SDKLIBS = --start-group -lc -lgcc -lhal -llwip -lmain -lnet80211 -lpp -lphy \
-              -lwpa --end-group
+              -lssl -lwpa --end-group
 
 BOOT_BIN = $(NONOS_SDK_PATH)/bin/boot_v1.6.bin
 BLANK_BIN = $(NONOS_SDK_PATH)/bin/blank.bin
