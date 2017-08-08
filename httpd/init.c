@@ -60,6 +60,10 @@ ICACHE_FLASH_ATTR void httpd_init() {
         return;
     }
 
+    /*
+     * Use a task (rather than a timer) because multiple clients may need to
+     * be signalled (ie disconnected) simultaneously or near simultaneously.
+     */
     if (!system_os_task(httpd_task, HTTPD_TASK_PRIO, httpd_task_queue,
                         sizeof(httpd_task_queue)/sizeof(*httpd_task_queue))) {
         LOG_CRITICAL(HTTPD, "system_os_task() failed\n")
