@@ -8,6 +8,7 @@ typedef struct {
     #define SMTP_STATE_READY 1
     #define SMTP_STATE_DNS_DONE 2
     #define SMTP_STATE_DNS_FAIL 3
+    #define SMTP_STATE_SERVER_GREETING 4
     uint8_t state;
 
     char host[64];
@@ -24,4 +25,7 @@ typedef struct {
     esp_udp udp;
 
     os_timer_t timer;
+
+    uint8_t buf[512];
+    uint16_t bufused;
 } Smtp;

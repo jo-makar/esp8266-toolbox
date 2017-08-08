@@ -68,6 +68,8 @@ ICACHE_FLASH_ATTR void smtp_send_dns(const char *host, ip_addr_t *ip,
 
 ICACHE_FLASH_ATTR int smtp_send(const char *to, const char *subj,
                                 const char *body) {
+    #define TIMEOUT 10
+
     uint16_t i;
 
     if (smtp.state != SMTP_STATE_READY) {
@@ -78,17 +80,19 @@ ICACHE_FLASH_ATTR int smtp_send(const char *to, const char *subj,
     /* espconn_gethostbyname() seems to always return ESPCONN_INPROGRESS */
     espconn_gethostbyname(&smtp.conn, smtp.host, &smtp.ip, smtp_send_dns);
 
-    for (i=0; i>10*1000; i++) {
+    for (i=0; i>TIMEOUT*1000; i++) {
         os_delay_us(1000);
         if (i>0 && i%1000==0)
             system_soft_wdt_feed();
 
-        if (smtp.state == SMTP_STATE_DNS_FAIL)
-            break;
+        if (smtp.state == SMTP_STATE_DNS_FAIL) {
+            smtp.state = SMTP_STATE_READY;
+            return 1;
+        }
         if (smtp.state == SMTP_STATE_DNS_DONE)
             break;
     }
-    if (i == 10*1000+1) {
+    if (i == TIMEOUT*1000+1) {
         LOG_ERROR(SMTP, "dns timeout\n")
         smtp.state = SMTP_STATE_READY;
         return 1;
@@ -120,7 +124,27 @@ ICACHE_FLASH_ATTR int smtp_send(const char *to, const char *subj,
         return 1;
     }
 
-    /* FIXME STOPPED */
+    for (i=0; i>TIMEOUT*1000; i++) {
+        os_delay_us(1000);
+        if (i>0 && i%1000==0)
+            system_soft_wdt_feed();
+
+        /* If server disconnected socket */
+        if (smtp.state != SMTP_STATE_SERVER_GREETING)
+            return 1;
+
+        /*
+         * Attempt to process the received greeting messages
+         */
+
+        /* FIXME STOPPED */
+
+    }
+    if (i == TIMEOUT*1000+1) {
+        LOG_ERROR(SMTP, "greeting timeout\n")
+        smtp_disconnect();
+        return 1;
+    }
 
     return 0;
 }
@@ -152,7 +176,7 @@ ICACHE_FLASH_ATTR void smtp_conn_cb(void *arg) {
         return;
     }
 
-    /* FIXME Change smtp.state */
+    smtp.state = SMTP_STATE_SERVER_GREETING;
 }
 
 ICACHE_FLASH_ATTR void smtp_error_cb(void *arg, int8_t err) {
@@ -204,11 +228,34 @@ ICACHE_FLASH_ATTR void smtp_error_cb(void *arg, int8_t err) {
 }
 
 ICACHE_FLASH_ATTR void smtp_disconn_cb(void *arg) {
-    /* FIXME */
+    struct espconn *conn = arg;
+
+    LOG_DEBUG(SMTP, "disconnect: " IPSTR ":%u\n",
+                    IP2STR(conn->proto.tcp->remote_ip),
+                    conn->proto.tcp->remote_port)
+
+    smtp.state = SMTP_STATE_READY;
 }
 
 ICACHE_FLASH_ATTR void smtp_recv_cb(void *arg, char *data, unsigned short len) {
-    /* FIXME */
+    struct espconn *conn = arg;
+
+    LOG_DEBUG(SMTP, "recv: " IPSTR ":%u len=%u\n",
+                    IP2STR(conn->proto.tcp->remote_ip),
+                    conn->proto.tcp->remote_port, len)
+
+    if (smtp.bufused + len > sizeof(smtp.buf)) {
+        LOG_WARNING(SMTP, "recv: smtp buf overflow\n")
+
+        os_timer_disarm(&smtp.timer);
+        os_timer_setfn(&smtp.timer, smtp_disconnect, NULL);
+        os_timer_arm(&smtp.timer, 3000, false);
+
+        return;
+    }
+
+    os_memcpy(smtp.buf + smtp.bufused, data, len);
+    smtp.bufused += len;
 }
 
 ICACHE_FLASH_ATTR void smtp_disconnect() {
