@@ -171,21 +171,47 @@ flash: app1.bin
 
 fota: app1.bin app2.bin
 	@echo HTTP_UPDATE
-	@bin=`curl http://192.168.4.1/fota/bin 2>/dev/null`; \
-         if [ $$bin = '0' ]; then file=app2.bin; \
-         elif [ $$bin = '1' ]; then file=app1.bin; \
+	@bin=`curl -k http://192.168.4.1/fota/bin 2>/dev/null`; \
+         if [ "$$bin" = '0' ]; then file=app2.bin; \
+         elif [ "$$bin" = '1' ]; then file=app1.bin; \
          else false; fi; \
          \
          echo $$file; \
          sha256sum $$file | awk '{print $$1}'; \
          cat $$file.sig; \
-         curl --data-binary @$$file \
+         curl -k --data-binary @$$file \
              http://192.168.4.1/fota/push?`cat $$file.sig`
 
 keys:
-	@echo OPENSSL GENRSA
-	test ! -e crypto/privkey.pem
+	@test ! -e crypto/privkey.pem
 	@openssl genrsa -out crypto/privkey.pem 512
 	@openssl rsa -in crypto/privkey.pem -out crypto/pubkey.pem -pubout
 	@openssl rsa -in crypto/pubkey.pem -pubin -text -noout
 	@crypto/pubkey.py crypto/privkey.pem | tee crypto/pubkey.c
+
+
+certs:
+	@test ! -e httpd/key.x509
+
+	@# Based on $(NONOS_SDK_PATH)/tools/makefile.sh
+
+	@openssl genrsa -out httpd/ca.pem 1024
+	@openssl genrsa -out httpd/key.pem 1024
+	@openssl rsa -in httpd/key.pem -out httpd/key.der -outform DER
+
+	@openssl req -out httpd/ca.req -key httpd/ca.pem -new \
+         -subj '/O=esp8266-toolbox Certificate Authority/'
+	@openssl req -out httpd/key.req -key httpd/key.pem -new \
+         -subj '/CN=192.168.4.1/O=esp8266-toolbox/'
+
+	@openssl x509 -req -in httpd/ca.req -out httpd/ca.x509 \
+         -sha1 -days 5000 -signkey httpd/ca.pem
+	@openssl x509 -req -in httpd/key.req -out httpd/key.x509 \
+         -sha1 -CAcreateserial -days 5000 -CA httpd/ca.x509 \
+         -CAkey httpd/ca.pem
+
+	@openssl x509 -in httpd/key.x509 -outform DER -out httpd/cert
+	@xxd -i httpd/cert >httpd/ssl.c; echo >>httpd/ssl.c
+	@xxd -i httpd/key.der >>httpd/ssl.c
+
+	@rm -f httpd/*.req httpd/cert

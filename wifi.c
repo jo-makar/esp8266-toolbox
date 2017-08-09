@@ -41,7 +41,7 @@ ICACHE_FLASH_ATTR void wifi_init() {
 
         apconf.authmode = AUTH_WPA_WPA2_PSK;
         apconf.ssid_hidden = 0;
-        apconf.max_connection = MAX_CONN;
+        apconf.max_connection = 4;
         apconf.beacon_interval = 100;
 
         if (!wifi_softap_set_config(&apconf))

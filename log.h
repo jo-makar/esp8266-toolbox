@@ -4,7 +4,7 @@
 #include <osapi.h>
 #include <user_interface.h>
 
-#include "httpd/private.h"
+#include "httpd/httpd.h"
 #include "config.h"
 #include "missing-decls.h"
 

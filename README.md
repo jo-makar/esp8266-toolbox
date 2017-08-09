@@ -3,7 +3,9 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 
 # Status
 - [x] HTTP server framework
-  - Multiple simultaneous clients
+  - Only HTTPS and one simultaneous client
+    - Forced to use HTTPS to support SSL elsewhere
+    - These are the results of ESP SDK limitations 
   - GET and POST methods
 - [x] SHA256 implementation
 - [x] Push-based OTA updates
@@ -15,7 +17,7 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [x] Signed OTA firmware updates
   - Using RSA signature verification
 - [ ] SMTP client framework for email/text alerts
-  - Supporting GMail SMTP servers
+- [ ] Add a check for memory leaks (akin to the uptime timer)
 - [ ] Light, motion detection sensor drivers
 - [ ] Temp., humidity sensor drivers
 
@@ -29,8 +31,6 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 - [ ] Enable SSL certificate verification (in SMTP framework)
   - Involves creating and embedding a CA certificate
 - [ ] MQTT client framework
-- [ ] Provide option of using HTTPS via SDK (espconn_secure_*)
-  - Limitation of only being able to service one client at a time
 - [ ] Production board design
 
 # Signed OTA firmware updates
@@ -61,6 +61,7 @@ Url | Description
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
 - Modify the variables at the top of the Makefile if necessary
 - Run `make keys` to generate the OTA signing keys
+- Run `make certs` to generate the SSL certificates and keys
 - Run `make` to build the application binary
 - Breadboard a circuit (refer to /hw for a development schematic)
 - Power the circuit and connect via a USB-UART bridge

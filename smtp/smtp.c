@@ -1,9 +1,13 @@
 #include <osapi.h>
 
+#include "../httpd/httpd.h"
 #include "../log.h"
 #include "smtp.h"
 
 static Smtp smtp;
+
+static void nonssl_start();
+static void nonssl_stop();
 
 static void smtp_send_dns(const char *host, ip_addr_t *ip, void *arg);
 static void smtp_send_connect(const ip_addr_t *ip);
@@ -66,6 +70,9 @@ ICACHE_FLASH_ATTR void smtp_send(const char *to, const char *subj,
         return;
     }
 
+    /* Must stop all other connections to use the SSL functions */
+    nonssl_stop();
+
     /*
      * Nothing (not event os_delay_us()) "releases" the processor to run tasks,
      * including internal systems task such as handling DNS resolution responses.
@@ -85,6 +92,7 @@ ICACHE_FLASH_ATTR void smtp_send(const char *to, const char *subj,
     } else {
         LOG_ERROR(SMTP, "espconn_gethosbyname() failed\n");
         smtp.state = SMTP_STATE_FAILED;
+        nonssl_start();
     }
 }
 
@@ -96,6 +104,7 @@ ICACHE_FLASH_ATTR void smtp_send_dns(const char *host, ip_addr_t *ip,
     if (ip == NULL) {
         LOG_INFO(SMTP, "smtp dns resolution failed\n");
         smtp.state = SMTP_STATE_FAILED;
+        nonssl_start();
     }
     else {
         LOG_INFO(SMTP, "smtp dns host=" IPSTR "\n", IP2STR(ip));
@@ -107,6 +116,7 @@ ICACHE_FLASH_ATTR void smtp_send_connect(const ip_addr_t *ip) {
     smtp.state = SMTP_STATE_CONNECT;
 
     os_bzero(&smtp.tcp, sizeof(smtp.tcp));
+    smtp.tcp.local_port = espconn_port();
     smtp.tcp.remote_port = smtp.port;
     smtp.tcp.remote_ip[3] = ip->addr >> 24;
     smtp.tcp.remote_ip[2] = ip->addr >> 16;
@@ -115,39 +125,43 @@ ICACHE_FLASH_ATTR void smtp_send_connect(const ip_addr_t *ip) {
 
     os_bzero(&smtp.conn, sizeof(smtp.conn));
     smtp.conn.type = ESPCONN_TCP;
+    smtp.conn.state = ESPCONN_NONE;
     smtp.conn.proto.tcp = &smtp.tcp;
 
     if (!espconn_secure_ca_disable(1)) {
         LOG_ERROR(SMTP, "espconn_secure_ca_disable() failed\n")
         smtp.state = SMTP_STATE_FAILED;
+        nonssl_start();
         return;
     }
 
-    if (!espconn_secure_set_size(1, 4*1024)) {
+    if (!espconn_secure_set_size(1, 8*1024)) {
         LOG_ERROR(SMTP, "espconn_secure_set_size() failed\n")
         smtp.state = SMTP_STATE_FAILED;
+        nonssl_start();
         return;
     }
 
     if (espconn_regist_connectcb(&smtp.conn, smtp_conn_cb)) {
         LOG_ERROR(SMTP, "espconn_regist_connectcb() failed\n");
         smtp.state = SMTP_STATE_FAILED;
+        nonssl_start();
         return;
     }
 
     if (espconn_regist_reconcb(&smtp.conn, smtp_error_cb)) {
         LOG_ERROR(SMTP, "espconn_regist_connectcb() failed\n");
         smtp.state = SMTP_STATE_FAILED;
+        nonssl_start();
         return;
     }
 
-    if (!espconn_secure_connect(&smtp.conn)) {
+    if (espconn_secure_connect(&smtp.conn)) {
         LOG_ERROR(SMTP, "espconn_secure_connect() failed\n");
         smtp.state = SMTP_STATE_FAILED;
+        nonssl_start();
         return;
     }
-
-    /* FIXME STOPPED connect callback not being called */
 }
 
 ICACHE_FLASH_ATTR void smtp_conn_cb(void *arg) {
@@ -188,26 +202,34 @@ ICACHE_FLASH_ATTR void smtp_send_greet() {
     smtp.state = SMTP_STATE_GREET;
 
     /* The 127.0.1.1 is  not a typo, see https://serverfault.com/a/490530 */
-    #define EHLO_LINE "ehlo [127.0.1.1]\r\n"
+    #define EHLO_LINE "ehlo [127.0.1.1]"
 
-    if ((outbuflen = os_strlen(EHLO_LINE)) > sizeof(smtp.outbuf)) {
+    if ((outbuflen = os_strlen(EHLO_LINE "\r\n")) > sizeof(smtp.outbuf)) {
         LOG_ERROR(SMTP, "smtp outbuf overflow\n")
         smtp.state = SMTP_STATE_FAILED;
-        smtp_disconnect();
+
+        os_timer_disarm(&smtp.timer);
+        os_timer_setfn(&smtp.timer, smtp_disconnect, NULL);
+        os_timer_arm(&smtp.timer, 3000, false);
+
         return;
     }
-    os_memcpy(&smtp.outbuf, EHLO_LINE, outbuflen);
+    os_memcpy(&smtp.outbuf, EHLO_LINE "\r\n", outbuflen);
 
     if (espconn_secure_send(&smtp.conn, smtp.outbuf, outbuflen)) {
         LOG_ERROR(SMTP, "espconn_secure_send() failed\n")
         smtp.state = SMTP_STATE_FAILED;
-        smtp_disconnect();
+
+        os_timer_disarm(&smtp.timer);
+        os_timer_setfn(&smtp.timer, smtp_disconnect, NULL);
+        os_timer_arm(&smtp.timer, 3000, false);
+
         return;
     }
 
+    LOG_DEBUG(SMTP, ">>> %s\n", EHLO_LINE)
+
     /* FIXME STOPPED */
-    LOG_DEBUG(SMTP, ">>> %5s\n", "abcdefghijklmno")
-    LOG_DEBUG(SMTP, ">>> %.5s\n", "abcdefghijklmno")
 }
 
 ICACHE_FLASH_ATTR void smtp_error_cb(void *arg, int8_t err) {
@@ -292,4 +314,14 @@ ICACHE_FLASH_ATTR void smtp_disconnect() {
 
     if (espconn_secure_disconnect(&smtp.conn))
         LOG_ERROR(SMTP, "espconn_secure_disconnect() failed\n");
+
+    nonssl_start();
+}
+
+ICACHE_FLASH_ATTR void nonssl_start() {
+    //httpd_init();
+}
+
+ICACHE_FLASH_ATTR void nonssl_stop() {
+    //httpd_stop();
 }

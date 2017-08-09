@@ -17,8 +17,8 @@ ICACHE_FLASH_ATTR int httpd_url_logs(HttpdClient *client) {
         HTTPD_OUTBUF_APPEND("\r\n")
         HTTPD_OUTBUF_APPEND("<html><body><h1>404 Not Found</h1></body></html>\n")
 
-        if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-            LOG_ERROR(HTTPD, "url_404: espconn_send() failed\n")
+        if (espconn_secure_send(client->conn, httpd_outbuf, httpd_outbuflen))
+            LOG_ERROR(HTTPD, "url_404: espconn_secure_send() failed\n")
 
         return 1;
     #else
@@ -70,8 +70,8 @@ ICACHE_FLASH_ATTR int httpd_url_logs(HttpdClient *client) {
         os_snprintf((char *)httpd_outbuf+77, 5, "%4u", end-beg);
         httpd_outbuf[81] = '\r';
 
-        if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-            LOG_ERROR(HTTPD, "espconn_send() failed\n")
+        if (espconn_secure_send(client->conn, httpd_outbuf, httpd_outbuflen))
+            LOG_ERROR(HTTPD, "espconn_secure_send() failed\n")
 
         return 1;
     #endif

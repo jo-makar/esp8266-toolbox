@@ -43,8 +43,8 @@ ICACHE_FLASH_ATTR int httpd_url_version(HttpdClient *client) {
     os_snprintf((char *)httpd_outbuf+77, 5, "%4u", end-beg);
     httpd_outbuf[81] = '\r';
 
-    if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        LOG_ERROR(HTTPD, "espconn_send() failed\n")
+    if (espconn_secure_send(client->conn, httpd_outbuf, httpd_outbuflen))
+        LOG_ERROR(HTTPD, "espconn_secure_send() failed\n")
 
     return 1;
 }
@@ -96,8 +96,8 @@ ICACHE_FLASH_ATTR int httpd_url_uptime(HttpdClient *client) {
     os_snprintf((char *)httpd_outbuf+77, 5, "%4u", end-beg);
     httpd_outbuf[81] = '\r';
 
-    if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        LOG_ERROR(HTTPD, "espconn_send() failed\n")
+    if (espconn_secure_send(client->conn, httpd_outbuf, httpd_outbuflen))
+        LOG_ERROR(HTTPD, "espconn_secure_send() failed\n")
 
     return 1;
 }

@@ -19,8 +19,8 @@ ICACHE_FLASH_ATTR int httpd_url_reset(HttpdClient *client) {
     HTTPD_OUTBUF_APPEND("\r\n")
     HTTPD_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>\n")
 
-    if (espconn_send(client->conn, httpd_outbuf, httpd_outbuflen))
-        LOG_ERROR(HTTPD, "espconn_send() failed\n")
+    if (espconn_secure_send(client->conn, httpd_outbuf, httpd_outbuflen))
+        LOG_ERROR(HTTPD, "espconn_secure_send() failed\n")
 
     os_timer_disarm(&reset_timer);
     os_timer_setfn(&reset_timer, reset, NULL);

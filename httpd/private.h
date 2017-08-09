@@ -5,18 +5,21 @@
 #include <sys/types.h>
 #include <osapi.h>
 
-#include "../config.h"
 #include "../log.h"
 #include "../missing-decls.h"
+#include "ssl.h"
+
+/*
+ * Client data
+ */
 
 typedef struct {
-    uint8_t inuse;
-
     struct espconn *conn;
 
     #define HTTPD_STATE_HEADERS 0
     #define HTTPD_STATE_POSTDATA 1
     #define HTTPD_STATE_RESPONSE 2
+    #define HTTPD_STATE_DISCONNECTED 3 
     uint8_t state;
 
     #define HTTPD_METHOD_GET 0
@@ -34,9 +37,25 @@ typedef struct {
     uint32_t postlen;
 } HttpdClient;
 
-extern HttpdClient httpd_clients[HTTPD_MAX_CONN];
+extern HttpdClient httpd_client;
 
-enum httpd_task_signal { HTTPD_DISCONN };
+/*
+ * Disconnect handling
+ */
+
+extern os_timer_t httpd_disconnect_timer;
+
+void httpd_disconnect(void *arg);
+
+#define HTTPD_DISCONNECT_LATER(conn) { \
+    os_timer_disarm(&httpd_disconnect_timer); \
+    os_timer_setfn(&httpd_disconnect_timer, httpd_disconnect, conn); \
+    os_timer_arm(&httpd_disconnect_timer, 200, false); \
+}
+
+/*
+ * Url processing/matching
+ */
 
 typedef struct {
     uint8_t baseurl[HTTPD_URL_LEN/2];
@@ -45,6 +64,26 @@ typedef struct {
 
 extern const HttpdUrl httpd_urls[];
 extern const size_t httpd_urlcount;
+
+int httpd_process(HttpdClient *client);
+
+int httpd_url_404(HttpdClient *client);
+
+int httpd_url_fota_bin(HttpdClient *client);
+int httpd_url_fota_push(HttpdClient *client);
+
+int httpd_url_version(HttpdClient *client);
+int httpd_url_uptime(HttpdClient *client);
+
+int httpd_url_wifi_setup(HttpdClient *client);
+
+int httpd_url_logs(HttpdClient *client);
+
+int httpd_url_reset(HttpdClient *client);
+
+/*
+ * Output buffer processing
+ */
 
 uint8_t httpd_outbuf[HTTPD_OUTBUF_MAXLEN];
 uint16_t httpd_outbuflen;
@@ -100,21 +139,5 @@ uint16_t httpd_outbuflen;
     os_strncpy((char *)httpd_outbuf+httpd_outbuflen, buf, len+1); \
     httpd_outbuflen += len; \
 }
-
-int httpd_process(HttpdClient *client);
-
-int httpd_url_404(HttpdClient *client);
-
-int httpd_url_fota_bin(HttpdClient *client);
-int httpd_url_fota_push(HttpdClient *client);
-
-int httpd_url_version(HttpdClient *client);
-int httpd_url_uptime(HttpdClient *client);
-
-int httpd_url_wifi_setup(HttpdClient *client);
-
-int httpd_url_logs(HttpdClient *client);
-
-int httpd_url_reset(HttpdClient *client);
 
 #endif

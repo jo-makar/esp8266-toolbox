@@ -12,15 +12,9 @@
 #define SSID_PREFIX "esp"
 #define SSID_PASS "l0cK*It_Dwn"
 
-#define SMTP_GMAIL_USER "xxx@gmail.com"
-#define SMTP_GMAIL_PASS "yyy"
-
-#define MAX_CONN_IN 4
-#define MAX_CONN MAX_CONN_IN+2
-
-#define HTTPD_MAX_CONN MAX_CONN_IN/2
-
-#define HTTPD_TASK_PRIO USER_TASK_PRIO_0
+#define SMTP_USER "xxx@gmail.com"
+#define SMTP_PASS "yyy"
+/* FIXME SMTP_HOST SMTP_PASS */
 
 /*******************************************************************************/
 
@@ -38,6 +32,5 @@
 #define SMTP_LOG_LEVEL   LEVEL_DEBUG
 
 #define LOG_URLBUF_ENABLE 1
-#define HTTPD_OUTBUF_MAXLEN 5*1024
 
 #endif

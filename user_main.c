@@ -31,12 +31,15 @@ ICACHE_FLASH_ATTR void user_init() {
 
     wifi_init();
 
-    if (espconn_tcp_set_max_con(MAX_CONN))
-        LOG_CRITICAL(MAIN, "espconn_tcp_set_max_con() failed\n")
+    if (!espconn_secure_set_size(1, 8*1024))
+        LOG_ERROR(SMTP, "espconn_secure_set_size() failed\n")
+    if (!espconn_secure_set_default_certificate(httpd_cert, httpd_cert_len))
+        LOG_ERROR(SMTP, "espconn_secure_set_default_certificate() failed\n")
+    if (!espconn_secure_set_default_private_key(httpd_key_der,
+                                                httpd_key_der_len))
+        LOG_ERROR(SMTP, "espconn_secure_set_default_private_key() failed\n")
 
     httpd_init();
-
-    smtp_init_gmail(SMTP_GMAIL_USER, SMTP_GMAIL_PASS);
 }
 
 /*
@@ -48,8 +51,10 @@ ICACHE_FLASH_ATTR void user_init_net() {
     static uint8_t init = 0;
 
     if (init == 0) {
+        /* FIXME STOPPED
         os_snprintf(subj, sizeof(subj), "Version %u.%u.%u online");
         smtp_send("jomakar.app@gmail.com", subj, "");
+        */
         init = 1;
     }
 }

@@ -8,5 +8,13 @@ crypto/privkey.pem
 crypto/pubkey.pem
 crypto/pubkey.c
 
+httpd/ca.pem
+httpd/ca.srl
+httpd/ca.x509
+httpd/key.der
+httpd/key.pem
+httpd/key.x509
+httpd/ssl.c
+
 *.o
 *.d
