@@ -21,15 +21,16 @@ Motley of servers and clients for the ESP8266 with signed OTA updates
 
 # Later
 - [ ] Add /wifi/info for (at least) connected station RSSI, etc
+- [ ] Battery power circuit and monitoring code
+  - Use sleep modes for power conservation
 - [ ] Pull-based OTA updates via HTTP GET
   - Scheduled checks say every six hours by timer
   - The server url will use an id for device-specific apps/keys
-- [ ] Provide option of using HTTPS via SDK (espconn_secure_*)
-  - Limitation of only one server socket and one client
-- [ ] NTP client framework (provided by the SDK)
+- [ ] Enable SSL certificate verification (in SMTP framework)
+  - Involves creating and embedding a CA certificate
 - [ ] MQTT client framework
-- [ ] Battery power circuit and monitoring code
-  - Use sleep modes for power conservation
+- [ ] Provide option of using HTTPS via SDK (espconn_secure_*)
+  - Limitation of only being able to service one client at a time
 - [ ] Production board design
 
 # Signed OTA firmware updates

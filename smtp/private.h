@@ -5,14 +5,14 @@
 
 typedef struct {
     /* SMTP_STATE_READY is 1 to ensure smtp_init_*() succeeded */
+    #define SMTP_STATE_FAILED -1
     #define SMTP_STATE_READY 1
-    #define SMTP_STATE_DNS_DONE 2
-    #define SMTP_STATE_DNS_FAIL 3
-    #define SMTP_STATE_SERVER_GREETING 4
+    #define SMTP_STATE_RESOLVE 2
+    #define SMTP_STATE_CONNECT 3
+    #define SMTP_STATE_GREET 4
     uint8_t state;
 
     char host[64];
-    ip_addr_t ip;
     uint16_t port;
 
     char user[64];
@@ -26,6 +26,8 @@ typedef struct {
 
     os_timer_t timer;
 
-    uint8_t buf[512];
-    uint16_t bufused;
+    uint8_t inbuf[512];
+    uint16_t inbufused;
+
+    uint8_t outbuf[1024];
 } Smtp;

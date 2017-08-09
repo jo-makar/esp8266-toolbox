@@ -12,11 +12,15 @@ password = 'yyy'
 mailfrom = mailto = username
 
 if __name__ == '__main__':
-    smtp = smtplib.SMTP('smtp.gmail.com:587')
+    #smtpclass, port = smtplib.SMTP, 587
+    smtpclass, port = smtplib.SMTP_SSL, 465
+
+    smtp = smtpclass('smtp.gmail.com', port)
     smtp.set_debuglevel(True)
 
     smtp.ehlo()
-    smtp.starttls()
+    if port == 587:
+        smtp.starttls()
     smtp.login(username, password)
     smtp.sendmail(mailfrom, mailto, '\r\n'.join(['From: %s' % mailfrom,
                                                  'To: %s' % mailto,
