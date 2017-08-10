@@ -4,4 +4,4 @@ app?.elf
 *.o
 *.d
 
-*.swp
+log/uart0/uart0

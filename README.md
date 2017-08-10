@@ -2,22 +2,22 @@
 Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 
 # Status
-- [ ] Logging framework (akin to syslog)
+- [x] Logging framework (akin to syslog)
 - [ ] HTTP server framework
   - [ ] SSL via BearSSL or similar 
-- [ ] SMTP client framework
 - [ ] OTA updates
   - [ ] RSA signed updates
       - [ ] Big integer implementation
       - [ ] SHA256 implementation
   - [ ] Push updates
   - [ ] Pull updates
-- [ ] Battery circuit monitoring
-- [ ] Sleep modes for power conservation
+- [ ] SMTP client framework
 - [ ] Environment monitoring
   - [ ] Ambient light
   - [ ] Motion, vibration
   - [ ] Temperature, humidity
+- [ ] Battery circuit monitoring
+- [ ] Sleep modes for power conservation
 - [ ] Self-diagnosis and healing
 - [ ] MQTT client framework
 - [ ] Production board design
@@ -35,10 +35,29 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 - Go to http://192.168.4.1/wifi/setup to set the WiFi station config
 
 # Logging framework
-FIXME
+A logging framework akin to Linux's syslog(3) is available from log/log.h.
+Subsystem logging levels (eg MAIN_LOG_LEVEL) are intended to be defined in
+config.h using the LEVEL_* definitions.
+
+An example use case from user_init.c:
+    info(MAIN, "Version %s built on %s", VERSION, BUILD_DATE)
+
+Would produce the following log entry:
+    00:00:15.506: info: user_init.c:13: Version 1.0.0 built on Aug 10 2017 06:52:39
+which is comprised of system time (hours:minutes:seconds.milliseconds), log
+level, file path and line number and finally entry proper.
+
+The log entries are sent to UART0 (with the default baudrate and params) and
+stored in a buffer for use elsewhere, eg served by web page or sent by mail.
+
+Run `make log` to execute a host application that will read the output produced
+from UART0 including the generated log entries.  The Linux application
+log/uart0/uart0 is provided to support USB-UART bridges that can use non-standard
+baudrates only via ioctl() calls, eg the CP2104.
 
 # HTTP server framework
 FIXME List provided urls
+FIXME Provide text and html versions of most if not all
 
 # License
 This software is freely available for non-commerical use, commerical use requires

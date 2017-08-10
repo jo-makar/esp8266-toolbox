@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = $(wildcard *.c)
+SRC = $(wildcard *.c log/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 
@@ -12,7 +12,9 @@ OBJDUMP = $(TOOLCHAIN_PATH)/xtensa-lx106-elf-objdump
 
 GEN_APPBIN = $(SDK_PATH)/tools/gen_appbin.py
 
-CFLAGS = -Os -Wall -Wextra -DICACHE_FLASH -I$(SDK_PATH)/include
+ESPTOOL = $(TOOLCHAIN_PATH)/esptool.py
+
+CFLAGS = -Os -Wall -Wextra -mlongcalls -DICACHE_FLASH -I$(SDK_PATH)/include -I.
 
 LDFLAGS = -L$(SDK_PATH)/ld -L$(SDK_PATH)/lib \
           -L$(TOOLCHAIN_PATH)/../xtensa-lx106-elf/sysroot/usr/lib \
@@ -24,6 +26,17 @@ SDK_LIBS = --start-group -lc -lgcc -lhal -llwip -lmain -lnet80211 -lphy -lpp -lw
 # The second partition is half the flash minus 4KB (blank) and 16KB (sys data).
 # Hence the max size of an app is the space available in the second partition.
 MAX_APP_SIZE = $(shell echo '($(FLASH_SIZE_KB)/2 - (4+16)) * 1024' | bc)
+
+BOOT_BIN     = $(SDK_PATH)/bin/boot_v1.6.bin
+BLANK_BIN    = $(SDK_PATH)/bin/blank.bin
+ESP_DATA_BIN = $(SDK_PATH)/bin/esp_init_data_default.bin
+
+BLANK_ADDR1  = $(shell printf "0x%05x\n" `echo '($(FLASH_SIZE_KB)/2 - 8)  * 1024' | bc`)
+BLANK_ADDR2  = $(shell printf "0x%05x\n" `echo '($(FLASH_SIZE_KB)/2 - 4)  * 1024' | bc`)
+ESPDATA_ADDR = $(shell printf "0x%05x\n" `echo '($(FLASH_SIZE_KB)   - 16) * 1024' | bc`)
+BLANK_ADDR3  = $(shell printf "0x%05x\n" `echo '($(FLASH_SIZE_KB)   - 12) * 1024' | bc`)
+BLANK_ADDR4  = $(shell printf "0x%05x\n" `echo '($(FLASH_SIZE_KB)   - 8)  * 1024' | bc`)
+BLANK_ADDR5  = $(shell printf "0x%05x\n" `echo '($(FLASH_SIZE_KB)   - 4)  * 1024' | bc`)
 
 all: app1.bin app2.bin
 
@@ -92,3 +105,28 @@ app2.elf: $(OBJ)
 
 clean:
 	@rm -f app?.bin eagle.app.*.bin app?.elf $(OBJ) $(DEP)
+
+flash: app1.bin
+	@echo WRITE_FLASH $<
+
+	@test `du -b     $(BOOT_BIN) | awk '{print $$1}'` -le 4096 || false
+	@test `du -b    $(BLANK_BIN) | awk '{print $$1}'` -le 4096 || false
+	@test `du -b $(ESP_DATA_BIN) | awk '{print $$1}'` -le 4096 || false
+
+	@$(ESPTOOL) -p $(UART0_PORT) \
+             write_flash -ff 80m -fm qio -fs $(FLASH_SIZE_ESPTOOL) --verify \
+             0x00000         $(BOOT_BIN) \
+             0x01000         app1.bin \
+             $(BLANK_ADDR1)  $(BLANK_BIN) \
+             $(BLANK_ADDR2)  $(BLANK_BIN) \
+             $(ESPDATA_ADDR) $(ESP_DATA_BIN) \
+             $(BLANK_ADDR3)  $(BLANK_BIN) \
+             $(BLANK_ADDR4)  $(BLANK_BIN) \
+             $(BLANK_ADDR5)  $(BLANK_BIN)
+
+.PHONY: log
+log:
+	@#log/uart0.py $(UART0_PORT)
+
+	@test -x log/uart0/uart0 || (cd log/uart0; make)
+	log/uart0/uart0 $(UART0_PORT)
