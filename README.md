@@ -2,9 +2,8 @@
 Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 
 # Status
-- [x] Logging framework (akin to syslog)
-- [ ] HTTP server framework
-  - [ ] SSL via BearSSL or similar 
+- [x] Logging framework
+- [x] HTTP server framework
 - [ ] OTA updates
   - [ ] RSA signed updates
       - [ ] Big integer implementation
@@ -12,6 +11,7 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
   - [ ] Push updates
   - [ ] Pull updates
 - [ ] SMTP client framework
+  - [ ] Provide SSL via BearSSL
 - [ ] Environment monitoring
   - [ ] Ambient light
   - [ ] Motion, vibration
@@ -36,11 +36,11 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 
 # Logging framework
 A logging framework akin to Linux's syslog(3) is available from log/log.h.
-Subsystem logging levels (eg MAIN_LOG_LEVEL) are intended to be defined in
-config.h using the LEVEL_* definitions.
+The default for all subsystem logging levels (eg MAIN_LOG_LEVEL) is LEVEL_INFO
+and can be changed at runtime with log_raise() or log_lower().
 
 An example use case from user_init.c:
-    info(MAIN, "Version %s built on %s", VERSION, BUILD_DATE)
+    INFO(MAIN, "Version %s built on %s", VERSION, BUILD_DATE)
 
 Would produce the following log entry:
     00:00:15.506: info: user_init.c:13: Version 1.0.0 built on Aug 10 2017 06:52:39
@@ -56,8 +56,25 @@ log/uart0/uart0 is provided to support USB-UART bridges that can use non-standar
 baudrates only via ioctl() calls, eg the CP2104.
 
 # HTTP server framework
-FIXME List provided urls
-FIXME Provide text and html versions of most if not all
+A simple HTTP server framework that support multiple simulatenous clients is
+implemented in http/.
+
+To add new urls, add an entry in http_urls and implement the corresponding
+callback.  Stubs are provided for processing POST data and writing to an output
+buffer, see the many examples listed.
+
+## Provided urls
+Url | Description
+--- | -----------
+/logs | Most recent log entries (?refresh to refresh automatically)
+/logs/lower | Lower a system's log level (eg ?main)
+/logs/raise | Raise a system's log level
+/ota/bin | Currently executing userbin/partition
+/ota/push | Push-based OTA updates (described below)
+/reset | System reset
+/uptime | System uptime
+/version | Application version
+/wifi/setup | WiFi SSID/password setup
 
 # License
 This software is freely available for non-commerical use, commerical use requires

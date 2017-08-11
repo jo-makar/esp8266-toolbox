@@ -1,8 +1,10 @@
 #ifndef LOG_PRIVATE_H
 #define LOG_PRIVATE_H
 
+#include "../http/private.h"
+
 typedef struct {
-    char main[5*1024];
+    char main[HTTP_OUTBUF_MAXLEN-500];
     char line[192];
     char entry[256];
 } LogBuf;

@@ -13,6 +13,7 @@
 
 #define BUILD_DATETIME __DATE__ " " __TIME__
 
-#define MAIN_LOG_LEVEL LEVEL_DEBUG
+#define WIFI_SSID_PREFIX "esp8266"
+#define WIFI_PASSWORD    "l0cK*It_Dwn"
 
 #endif

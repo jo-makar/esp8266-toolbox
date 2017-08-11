@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = $(wildcard *.c log/*.c)
+SRC = $(wildcard *.c log/*.c http/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 
