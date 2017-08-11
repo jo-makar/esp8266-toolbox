@@ -1,5 +1,6 @@
 #include "log/log.h"
 #include "http/http.h"
+#include "smtp/smtp.h"
 #include "missing-decls.h"
 #include "uptime.h"
 #include "wifi.h"
@@ -27,6 +28,6 @@ ICACHE_FLASH_ATTR void user_init() {
     os_timer_arm(&uptime_timer, 1000*60*20, true);
 
     wifi_init();
-
     http_init();
+    smtp_init();
 }

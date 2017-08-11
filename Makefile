@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = $(wildcard *.c crypto/*.c http/*.c log/*.c)
+SRC = $(wildcard *.c crypto/*.c http/*.c log/*.c smtp/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 
@@ -22,7 +22,7 @@ LDFLAGS = -L$(SDK_PATH)/ld -L$(SDK_PATH)/lib \
 
 SDK_LIBS = --start-group -lc -lgcc -lhal -llwip -lmain -lnet80211 -lphy -lpp -lwpa --end-group
 
-# The first partition is half the flash minus 4KB (boot) and 8KB (OTA key).
+# The first partition is half the flash minus 4KB (boot).
 # The second partition is half the flash minus 4KB (blank) and 16KB (sys data).
 # Hence the max size of an app is the space available in the second partition.
 MAX_APP_SIZE = $(shell echo '($(FLASH_SIZE_KB)/2 - (4+16)) * 1024' | bc)

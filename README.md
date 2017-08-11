@@ -2,8 +2,11 @@
 Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 
 # Status
-- [x] Logging framework
 - [x] HTTP server framework
+  - [ ] Refactor to use a state-machine design
+    - Intended to simplify the framework interface (ie hide the SDK callbacks)
+    - Add support for multiple sends per HTTP response (eg http_url_logs())
+    - Data is to be pushed/pulled with an underlying task handling the callbacks
 - [x] OTA updates
   - [x] SHA256 implementation
   - [x] RSA signed updates
@@ -11,7 +14,8 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
   - [x] Push updates
   - [ ] Pull updates
 - [ ] SMTP client framework
-  - [ ] Provide SSL via BearSSL
+- [x] Logging framework
+  - [ ] Use SNTP for timestamps if available
 - [ ] Environment monitoring
   - [ ] Ambient light
   - [ ] Motion, vibration
@@ -35,27 +39,6 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 - The default WiFi access point IP address is 192.168.4.1
 - Go to http://192.168.4.1/wifi/setup to set the WiFi station config
 
-# Logging framework
-A logging framework akin to Linux's syslog(3) is available from log/log.h.
-The default for all subsystem logging levels (eg MAIN_LOG_LEVEL) is LEVEL_INFO
-and can be changed at runtime with log_raise() or log_lower().
-
-An example use case from user_init.c:
-    INFO(MAIN, "Version %s built on %s", VERSION, BUILD_DATE)
-
-Would produce the following log entry:
-    00:00:15.506: info: user_init.c:13: Version 1.0.0 built on Aug 10 2017 06:52:39
-which is comprised of system time (hours:minutes:seconds.milliseconds), log
-level, file path and line number and finally entry proper.
-
-The log entries are sent to UART0 (with the default baudrate and params) and
-stored in a buffer for use elsewhere, eg served by web page or sent by mail.
-
-Run `make log` to execute a host application that will read the output produced
-from UART0 including the generated log entries.  The Linux application
-log/uart0/uart0 is provided to support USB-UART bridges that can use non-standard
-baudrates only via ioctl() calls, eg the CP2104.
-
 # HTTP server framework
 A simple HTTP server framework that support multiple simulatenous clients is
 implemented in http/.
@@ -73,6 +56,7 @@ Url | Description
 /ota/bin | Currently executing userbin/partition
 /ota/push | Push-based OTA updates (described below)
 /reset | System reset
+/smtp/setup | SMTP account setup
 /uptime | System uptime
 /version | Application version
 /wifi/setup | WiFi SSID/password setup
@@ -93,7 +77,42 @@ into the new application otherwise a 400 Bad Request is returned.
 Run `make ota` to flash the binary using the procedure described.
 
 The big integer implementation only supports unsigned operations but it sufficient
-for RSA encryption and decryption, namely the x = (a**b) % c operation.
+for RSA encryption and decryption.
+
+# SMTP client framework
+A simple SMTP SSL client is available in smtp/.
+
+It currently depends on the included third-party library
+[BearSSL](http://www.bearssl.org).  To rebuild BearSSL, run
+`(cd bearssl-0.5; make CONF=esp8266)`.
+
+The account information (host, port, etc) are stored in flash with other user
+params starting at three sectors before the second partition.  Reference the code
+in param/ for background on user param storage and retrieval.
+
+# Logging framework
+A logging framework akin to Linux's syslog(3) is available from log/log.h.
+The default for all subsystem logging levels (eg MAIN_LOG_LEVEL) is LEVEL_INFO
+and can be changed at runtime with log_raise() or log_lower().
+
+An example use case from user_init.c:
+
+`INFO(MAIN, "Version %s built on %s", VERSION, BUILD_DATE)`
+
+Would produce the following log entry:
+
+`00:00:15.506: info: user_init.c:13: Version 1.0.0 built on Aug 10 2017 06:52:39`
+
+Which is comprised of system time (hours:minutes:seconds.milliseconds), log
+level, file path and line number and finally entry proper.
+
+The log entries are sent to UART0 (with the default baudrate and params) and
+stored in a buffer for use elsewhere, eg served by web page or sent by mail.
+
+Run `make log` to execute a host application that will read the output produced
+from UART0 including the generated log entries.  The Linux application
+log/uart0/uart0 is provided to support USB-UART bridges that can use non-standard
+baudrates only via ioctl() calls, eg the CP2104.
 
 # License
 This software is freely available for non-commerical use, commerical use requires

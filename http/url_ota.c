@@ -284,7 +284,6 @@ ICACHE_FLASH_ATTR int http_url_ota_push(HttpClient *client) {
 
     system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
 
-    /* Set a timer to reboot into the new app after five seconds */
     os_timer_disarm(&otastate.timer);
     os_timer_setfn(&otastate.timer, ota_reboot, NULL);
     os_timer_arm(&otastate.timer, 5000, false);

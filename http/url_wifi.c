@@ -34,14 +34,14 @@ ICACHE_FLASH_ATTR int http_url_wifi_setup(HttpClient *client) {
 
         if (os_strncmp(key, "ssid", 4) == 0) {
             if (os_strlen(val) >= sizeof(conf.ssid)) {
-                ERROR(HTTP, "ssid overflow");
+                ERROR(HTTP, "ssid overflow")
                 goto fail;
             }
             os_strncpy((char *)conf.ssid, val, os_strlen(val)+1);
         }
         else if (os_strncmp(key, "pass", 4) == 0) {
             if (os_strlen(val) >= sizeof(conf.password)) {
-                ERROR(HTTP, "pass overflow");
+                ERROR(HTTP, "pass overflow")
                 goto fail;
             }
             os_strncpy((char *)conf.password, val, os_strlen(val)+1);
@@ -71,7 +71,7 @@ ICACHE_FLASH_ATTR int http_url_wifi_setup(HttpClient *client) {
     HTTP_OUTBUF_APPEND("<html><body><h1>202 Accepted</h1></body></html>\n")
 
     if (espconn_send(client->conn, http_outbuf, http_outbuflen))
-        ERROR(HTTP, "espconn_send() failed\n")
+        ERROR(HTTP, "espconn_send() failed")
 
     return 1;
 
@@ -114,7 +114,7 @@ ICACHE_FLASH_ATTR int http_url_wifi_setup(HttpClient *client) {
     http_outbuf[81] = '\r';
 
     if (espconn_send(client->conn, http_outbuf, http_outbuflen))
-        ERROR(HTTP, "espconn_send() failed\n")
+        ERROR(HTTP, "espconn_send() failed")
     
     return 1;
 
@@ -128,7 +128,7 @@ ICACHE_FLASH_ATTR int http_url_wifi_setup(HttpClient *client) {
     HTTP_OUTBUF_APPEND("<html><body><h1>400 Bad Request</h1></body></html>\n")
 
     if (espconn_send(client->conn, http_outbuf, http_outbuflen))
-        ERROR(HTTP, "espconn_send() failed\n")
+        ERROR(HTTP, "espconn_send() failed")
 
     return 1;
 }

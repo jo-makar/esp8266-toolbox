@@ -7,6 +7,7 @@ void ets_bzero(void *, size_t);
 
 void ets_delay_us(uint16);
 
+void *ets_memcmp(const void *, const void *, size_t n);
 void *ets_memcpy(void *, const void *, size_t);
 void *ets_memmove(void *, const void *, size_t);
 

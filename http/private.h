@@ -131,6 +131,8 @@ int http_url_ota_push(HttpClient *client);
 
 int http_url_reset(HttpClient *client);
 
+int http_url_smtp_setup(HttpClient *client);
+
 int http_url_uptime(HttpClient *client);
 
 int http_url_version(HttpClient *client);

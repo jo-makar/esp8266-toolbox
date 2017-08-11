@@ -47,6 +47,7 @@ const HttpUrl http_urls[] = {
     { "/ota/bin",    http_url_ota_bin },
     { "/ota/push",   http_url_ota_push },
     { "/reset",      http_url_reset },
+    { "/smtp/setup", http_url_smtp_setup },
     { "/uptime",     http_url_uptime },
     { "/version",    http_url_version },
     { "/wifi/setup", http_url_wifi_setup },
