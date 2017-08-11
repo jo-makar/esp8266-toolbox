@@ -1,7 +1,10 @@
 app?.bin
+app?.bin.sig
 app?.elf
 
 *.o
 *.d
 
 log/uart0/uart0
+
+crypto/privkey.pem

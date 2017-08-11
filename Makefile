@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = $(wildcard *.c log/*.c http/*.c)
+SRC = $(wildcard *.c crypto/*.c http/*.c log/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 
@@ -55,6 +55,8 @@ app1.bin: app1.elf
 
 	@test `du -b $@ | awk '{print $$1}'` -le $(MAX_APP_SIZE) || false
 
+	@crypto/rsasign.py crypto/privkey.pem $@
+
 app2.bin: app2.elf
 	@echo GEN_APPBIN $<
 
@@ -89,6 +91,8 @@ app2.bin: app2.elf
 
 	@du -b $@ | awk '{printf "Flash: %.2f KB, %.2f%%\n", $$1/1024, $$1/$(MAX_APP_SIZE)*100}'; echo
 
+	@crypto/rsasign.py crypto/privkey.pem $@
+
 app1.elf: $(OBJ)
 	@echo LD $@
 	@$(LD) $(LDFLAGS) -Teagle.app.v6.new.1024.app1.ld -o $@ $^ $(SDK_LIBS)
@@ -104,7 +108,7 @@ app2.elf: $(OBJ)
 -include $(DEP)
 
 clean:
-	@rm -f app?.bin eagle.app.*.bin app?.elf $(OBJ) $(DEP)
+	@rm -f app?.bin app?.bin.sig eagle.app.*.bin app?.elf $(OBJ) $(DEP)
 
 flash: app1.bin
 	@echo WRITE_FLASH $<
@@ -130,3 +134,21 @@ log:
 
 	@test -x log/uart0/uart0 || (cd log/uart0; make)
 	log/uart0/uart0 $(UART0_PORT)
+
+keys:
+	@test ! -e crypto/privkey.pem
+	@openssl genrsa -out crypto/privkey.pem 512
+	@#openssl rsa -in crypto/privkey.pem -out crypto/pubkey.pem -pubout
+	@#openssl rsa -in crypto/pubkey.pem -pubin -text -noout
+	@echo; crypto/rsapubkey.py crypto/privkey.pem | tee crypto/rsapubkey.c
+
+ota: app1.bin app2.bin
+	@bin=`curl http://192.168.4.1/ota/bin?text 2>/dev/null`; \
+         if   [ "$$bin" = '0' ]; then file=app2.bin; \
+         elif [ "$$bin" = '1' ]; then file=app1.bin; \
+         else false; fi; \
+         \
+         echo $$file; \
+         sha256sum $$file | awk '{print $$1}'; \
+         cat $$file.sig; \
+         curl --data-binary @$$file http://192.168.4.1/ota/push?`cat $$file.sig`

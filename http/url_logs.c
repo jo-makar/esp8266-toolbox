@@ -158,12 +158,6 @@ ICACHE_FLASH_ATTR int http_url_logs(HttpClient *client) {
 
     end = http_outbuflen;
 
-   /*
-    * Write the Content-length value
-    *
-    * Apparently os_snprintf() behaves differently than snprintf(),
-    * os_snprintf() always writes the terminating null byte.
-    */
     os_snprintf((char *)http_outbuf+77, 5, "%4u", end-beg);
     http_outbuf[81] = '\r';
 
@@ -178,10 +172,16 @@ ICACHE_FLASH_ATTR int http_url_logs_lower(HttpClient *client) {
 
     HTTP_IGNORE_POSTDATA
 
-    if (os_strstr((char *)client->url, "?main") != NULL)
-        log_lower(&MAIN_LOG_LEVEL);
+    if (os_strstr((char *)client->url, "?crypto") != NULL)
+        log_lower(&CRYPTO_LOG_LEVEL);
     else if (os_strstr((char *)client->url, "?http") != NULL)
         log_lower(&HTTP_LOG_LEVEL);
+    else if (os_strstr((char *)client->url, "?main") != NULL)
+        log_lower(&MAIN_LOG_LEVEL);
+    else if (os_strstr((char *)client->url, "?ota") != NULL)
+        log_lower(&OTA_LOG_LEVEL);
+    else if (os_strstr((char *)client->url, "?smtp") != NULL)
+        log_lower(&SMTP_LOG_LEVEL);
     else
         found = 0;
 
@@ -212,10 +212,16 @@ ICACHE_FLASH_ATTR int http_url_logs_raise(HttpClient *client) {
 
     HTTP_IGNORE_POSTDATA
 
-    if (os_strstr((char *)client->url, "?main") != NULL)
-        log_raise(&MAIN_LOG_LEVEL);
+    if (os_strstr((char *)client->url, "?crypto") != NULL)
+        log_raise(&CRYPTO_LOG_LEVEL);
     else if (os_strstr((char *)client->url, "?http") != NULL)
         log_raise(&HTTP_LOG_LEVEL);
+    else if (os_strstr((char *)client->url, "?main") != NULL)
+        log_raise(&MAIN_LOG_LEVEL);
+    else if (os_strstr((char *)client->url, "?ota") != NULL)
+        log_raise(&OTA_LOG_LEVEL);
+    else if (os_strstr((char *)client->url, "?smtp") != NULL)
+        log_raise(&SMTP_LOG_LEVEL);
     else
         found = 0;
 

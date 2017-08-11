@@ -4,11 +4,11 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 # Status
 - [x] Logging framework
 - [x] HTTP server framework
-- [ ] OTA updates
-  - [ ] RSA signed updates
-      - [ ] Big integer implementation
-      - [ ] SHA256 implementation
-  - [ ] Push updates
+- [x] OTA updates
+  - [x] SHA256 implementation
+  - [x] RSA signed updates
+      - [x] Big integer implementation
+  - [x] Push updates
   - [ ] Pull updates
 - [ ] SMTP client framework
   - [ ] Provide SSL via BearSSL
@@ -25,6 +25,7 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 # Quick start
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
 - Modify the Makefile variables in config.mk if necessary
+- Run `make keys` to generate the OTA signing keys
 - Run `make` to build the application binaries
 - Power the circuit and connect via a USB-UART bridge
 - Put the ESP8266 in flash mode by holding GPIO0 low during boot
@@ -75,6 +76,24 @@ Url | Description
 /uptime | System uptime
 /version | Application version
 /wifi/setup | WiFi SSID/password setup
+
+# OTA updates
+An unencoded binary is uploaded by HTTP POST to /fota/push. The binary gets
+written to the unused partition in flash while its hash (SHA256) is calculated.
+When done it is read from flash and its hash is recalculated to verify the write
+integrity.
+
+The binary's hash is encrypted with a private RSA key and included in the URL to
+serve as a signature. If the signature does not verify with the embedded public
+key the firmware is rejected.
+
+If successful a HTTP 202 Accepted response is returned and the system is rebooted
+into the new application otherwise a 400 Bad Request is returned.
+
+Run `make ota` to flash the binary using the procedure described.
+
+The big integer implementation only supports unsigned operations but it sufficient
+for RSA encryption and decryption, namely the x = (a**b) % c operation.
 
 # License
 This software is freely available for non-commerical use, commerical use requires
