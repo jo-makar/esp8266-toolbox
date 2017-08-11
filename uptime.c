@@ -1,20 +1,18 @@
-#include <c_types.h>
-#include <user_interface.h>
+#include "log/log.h"
 
-#include "log.h"
-#include "uptime.h"
+#include <osapi.h>
 
-os_timer_t uptime_overflow_timer;
+os_timer_t uptime_timer;
 
-uint32_t uptime_high = 0;
-uint32_t uptime_last = 0;
+static uint32_t uptime_high = 0;
+static uint32_t uptime_last = 0;
 
-ICACHE_FLASH_ATTR void uptime_overflow_handler(void *arg) {
+ICACHE_FLASH_ATTR void uptime_handler(void *arg) {
     (void)arg;
 
     uint32_t t;
 
-    LOG_INFO(MAIN, "uptime_overflow_handler\n")
+    DEBUG(MAIN, "uptime_handler")
 
     if ((t=system_get_time()) < uptime_last)
         uptime_high++;

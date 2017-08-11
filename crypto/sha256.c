@@ -1,8 +1,8 @@
+#include "../missing-decls.h"
+#include "sha256.h"
+
 #include <sys/param.h>
 #include <osapi.h>
-
-#include "missing-decls.h"
-#include "sha256.h"
 
 ICACHE_RODATA_ATTR const uint32_t k[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b,
@@ -40,8 +40,7 @@ ICACHE_FLASH_ATTR void sha256_init(Sha256State *state) {
     state->totallen = 0;
 }
 
-ICACHE_FLASH_ATTR void sha256_proc(Sha256State *state,
-                                   const uint8_t *buf, size_t len) {
+ICACHE_FLASH_ATTR void sha256_proc(Sha256State *state, const uint8_t *buf, size_t len) {
     size_t used = 0;
     size_t len2;
 

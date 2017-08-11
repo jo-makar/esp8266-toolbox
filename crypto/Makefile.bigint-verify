@@ -1,0 +1,27 @@
+SRC = bigint.c
+OBJ = $(SRC:.c=.o)
+DEP = $(SRC:.c=.d)
+
+CFLAGS = -Wall -Wextra -DSTANDALONE
+LDFLAGS = 
+
+bigint-verify: bigint-tests
+        @./bigint-tests > bigint-tests.txt
+        @./bigint-verify.py > bigint-verify.txt
+        @cmp bigint-tests.txt bigint-verify.txt
+
+bigint-tests: $(OBJ) bigint-tests.o
+        @echo LD $@
+        @$(CC) $(LDFLAGS) -o $@ $^
+
+bigint-tests.c: bigint-write-tests.py
+        @./bigint-write-tests.py > bigint-tests.c
+
+%.o: %.c
+        @echo CC $<
+        @$(CC) $(CFLAGS) -MD -MF $(@:.o=.d) -c -o $@ $<
+
+-include $(DEP)
+
+clean:
+	@rm -f bigint-tests.txt bigint-verify.txt bigint-tests bigint-tests.c $(OBJ) $(DEP)

@@ -3,7 +3,7 @@
 
 uint64_t uptime_us();
 
-extern os_timer_t uptime_overflow_timer;
-void uptime_overflow_handler(void *arg);
+extern os_timer_t uptime_timer;
+void uptime_handler(void *arg);
 
 #endif

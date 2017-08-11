@@ -1,5 +1,5 @@
-#ifndef RSA_H
-#define RSA_H
+#ifndef CRYPTO_RSA_H
+#define CRYPTO_RSA_H
 
 #include "bigint.h"
 

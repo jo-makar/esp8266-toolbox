@@ -1,11 +1,11 @@
-#include "../log.h"
+#include "../log/log.h"
 #include "rsa.h"
 
 ICACHE_FLASH_ATTR int rsa_pubkey_decrypt(Bigint *clear, const Bigint *cipher) {
     int rv;
 
     if (bigint_bits(cipher) > bigint_bits(&pubkey_mod)) {
-        LOG_ERROR(CRYPTO, "assert bits(cipher) <= bits(pubkey_mod)\n")
+        ERROR(CRYPTO, "assert bits(cipher) <= bits(pubkey_mod)")
         return 1;
     }
 

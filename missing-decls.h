@@ -1,18 +1,11 @@
 #ifndef MISSING_DECLS_H
 #define MISSING_DECLS_H
 
-#include <c_types.h>
 #include <user_interface.h>
 
 void ets_bzero(void *, size_t);
 
 void ets_delay_us(uint16);
-
-void ets_install_putc1(void *);
-
-void ets_isr_attach(int, void *, void *);
-void ets_isr_mask(unsigned int);
-void ets_isr_unmask(unsigned int);
 
 void *ets_memcpy(void *, const void *, size_t);
 void *ets_memmove(void *, const void *, size_t);
@@ -33,15 +26,11 @@ void ets_timer_arm_new(os_timer_t *, uint32_t, bool, int);
 void ets_timer_disarm(os_timer_t *);
 void ets_timer_setfn(os_timer_t *, os_timer_func_t *, void *);
 
-int ets_uart_printf(const char *, ...);
-
 int os_printf_plus(const char *, ...);
 
 #define os_snprintf ets_snprintf
 
 void *pvPortMalloc(size_t, const char *, unsigned int);
-
-void uart_div_modify(unsigned int, unsigned int);
 
 void vPortFree(void *, const char *, unsigned int);
 

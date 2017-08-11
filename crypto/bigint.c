@@ -6,16 +6,15 @@
 
     #define ICACHE_FLASH_ATTR /**/
 #else
+    #include "../log/log.h"
+    #include "../missing-decls.h"
+
     #include <sys/param.h>
     #include <osapi.h>
-
-    #include "../log.h"
-    #include "missing-decls.h"
 #endif
 
 #include "bigint.h"
 
-/* To save stack space use temporary variable in BSS instead */
 Bigint mul_pt, mul_at;
 Bigint div_qt, div_rt, div_bc;
 Bigint expmod_xt, expmod_r;
@@ -57,7 +56,7 @@ Bigint expmod_xt, expmod_r;
         if ((i)->bytes >= DATA_MAXLEN - 1) { \
             /* \
              * #if !STANDALONE \
-             * LOG_ERROR(CRYPTO, "data overflow\n") \
+             *     ERROR(CRYPTO, "data overflow") \
              * #endif \
              */ \
             return 1; \
@@ -147,13 +146,13 @@ ICACHE_FLASH_ATTR int bigint_fromhex(Bigint *i, const char *s) {
     for (j = strlen(s) - 1; j >= 1; j -= 2) {
         if ((l = hexchar(s[j])) == -1) {
             #if !STANDALONE
-                LOG_WARNING(CRYPTO, "invalid hex char\n")
+                WARNING(CRYPTO, "invalid hex char")
             #endif
             return 2;
         }
         if ((h = hexchar(s[j-1])) == -1) {
             #if !STANDALONE
-                LOG_WARNING(CRYPTO, "invalid hex char\n")
+                WARNING(CRYPTO, "invalid hex char")
             #endif
             return 2;
         }
@@ -161,7 +160,7 @@ ICACHE_FLASH_ATTR int bigint_fromhex(Bigint *i, const char *s) {
         i->data[i->bytes++] = (h << 4) | l;
         if (i->bytes >= DATA_MAXLEN - 1) {
             #if !STANDALONE
-                LOG_ERROR(CRYPTO, "data overflow\n")
+                ERROR(CRYPTO, "data overflow")
             #endif
             return 1;
         }
@@ -170,7 +169,7 @@ ICACHE_FLASH_ATTR int bigint_fromhex(Bigint *i, const char *s) {
     if (j == 0) {
         if ((l = hexchar(s[j])) == -1) {
             #if !STANDALONE
-                LOG_WARNING(CRYPTO, "invalid hex char\n")
+                WARNING(CRYPTO, "invalid hex char")
             #endif
             return 2;
         }
@@ -277,7 +276,7 @@ ICACHE_FLASH_ATTR int bigint_add(Bigint *s, const Bigint *a, const Bigint *b) {
             s->bits = (i + 1) % 8;
             if (s->bytes >= DATA_MAXLEN - 1) {
                 #if !STANDALONE
-                    LOG_ERROR(CRYPTO, "data overflow\n")
+                    ERROR(CRYPTO, "data overflow")
                 #endif
                 return 1;
             }
@@ -297,7 +296,7 @@ ICACHE_FLASH_ATTR int bigint_add(Bigint *s, const Bigint *a, const Bigint *b) {
             s->bits = (i + 1) % 8;
             if (s->bytes >= DATA_MAXLEN - 1) {
                 #if !STANDALONE
-                    LOG_ERROR(CRYPTO, "data overflow\n")
+                    ERROR(CRYPTO, "data overflow")
                 #endif
                 return 1;
             }
@@ -310,7 +309,7 @@ ICACHE_FLASH_ATTR int bigint_add(Bigint *s, const Bigint *a, const Bigint *b) {
             s->bits = i % 8;
             if (s->bytes >= DATA_MAXLEN - 1) {
                 #if !STANDALONE
-                    LOG_ERROR(CRYPTO, "data overflow\n")
+                    ERROR(CRYPTO, "data overflow")
                 #endif
                 return 1;
             }
@@ -376,14 +375,14 @@ ICACHE_FLASH_ATTR int bigint_div(Bigint *q, Bigint *r,
 
     if (bigint_iszero(b)) {
         #if !STANDALONE
-            LOG_WARNING(CRYPTO, "division by zero\n")
+            WARNING(CRYPTO, "division by zero")
         #endif
         return 2;
     }
 
     if (q == r) {
         #if !STANDALONE
-            LOG_ERROR(CRYPTO, "assert q != r\n")
+            ERROR(CRYPTO, "assert q != r")
         #endif
         return 2;
     }
@@ -408,7 +407,7 @@ ICACHE_FLASH_ATTR int bigint_div(Bigint *q, Bigint *r,
             div_qt.bits = 0;
             if (div_qt.bytes >= DATA_MAXLEN - 1) {
                 #if !STANDALONE
-                    LOG_ERROR(CRYPTO, "data overflow\n")
+                    ERROR(CRYPTO, "data overflow")
                 #endif
                 return 1;
             }
@@ -428,7 +427,7 @@ ICACHE_FLASH_ATTR int bigint_div(Bigint *q, Bigint *r,
 
             if (bigint_cmp(&div_rt, b) >= 0) {
                 #if !STANDALONE
-                    LOG_ERROR(CRYPTO, "assert r < b\n")
+                    ERROR(CRYPTO, "assert r < b")
                 #endif
                 return 3;
             }
@@ -477,7 +476,7 @@ ICACHE_FLASH_ATTR int bigint_expmod(Bigint *x, const Bigint *a,
     for (i = BITS(b) - 1; i >= 0; i--) {
         #if !STANDALONE
             if (i % 10 == 0)
-                LOG_DEBUG(CRYPTO, "expmod i=%u\n", i)
+                DEBUG(CRYPTO, "expmod i=%u", i)
         #endif
 
         /* x = (x ** 2) % c */

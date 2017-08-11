@@ -1,5 +1,5 @@
-#ifndef BIGINT_H
-#define BIGINT_H
+#ifndef CRYPTO_BIGINT_H
+#define CRYPTO_BIGINT_H
 
 #if STANDALONE
     #include <stdint.h>
