@@ -8,3 +8,4 @@ app?.elf
 log/uart0/uart0
 
 crypto/privkey.pem
+crypto/rsapubkey.c

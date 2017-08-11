@@ -38,6 +38,7 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 - The default WiFi password is in config.h
 - The default WiFi access point IP address is 192.168.4.1
 - Go to http://192.168.4.1/wifi/setup to set the WiFi station config
+- Go to http://192.168.4.1/smtp/setup to set the SMTP account config
 
 # HTTP server framework
 A simple HTTP server framework that support multiple simulatenous clients is
@@ -96,11 +97,9 @@ The default for all subsystem logging levels (eg MAIN_LOG_LEVEL) is LEVEL_INFO
 and can be changed at runtime with log_raise() or log_lower().
 
 An example use case from user_init.c:
-
 `INFO(MAIN, "Version %s built on %s", VERSION, BUILD_DATE)`
 
 Would produce the following log entry:
-
 `00:00:15.506: info: user_init.c:13: Version 1.0.0 built on Aug 10 2017 06:52:39`
 
 Which is comprised of system time (hours:minutes:seconds.milliseconds), log

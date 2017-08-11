@@ -27,6 +27,7 @@ ICACHE_FLASH_ATTR int http_url_wifi_setup(HttpClient *client) {
         if (index(val, '&') != NULL) {
             next = index(val, '&') + 1;
             *(next - 1) = 0;
+            /* FIXME STOPPED Convert url encoded chars */
         } else
             next = NULL;
 
