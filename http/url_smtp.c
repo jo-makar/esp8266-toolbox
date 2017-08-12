@@ -30,7 +30,7 @@ ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
         if (index(val, '&') != NULL) {
             next = index(val, '&') + 1;
             *(next - 1) = 0;
-            /* FIXME STOPPED Convert url encoded chars, also in /wifi/setup */
+            url_decode(next);
         } else
             next = NULL;
 

@@ -1,7 +1,8 @@
 #ifndef HTTP_PRIVATE_H
 #define HTTP_PRIVATE_H
 
-#include "missing-decls.h"
+#include "../missing-decls.h"
+#include "utils.h"
 
 #include <sys/param.h>
 #include <ip_addr.h>
