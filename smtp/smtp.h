@@ -8,7 +8,11 @@ void smtp_init();
 void smtp_send(const char *from, const char *to,
                const char *subj, const char *body);
 
-void smtp_send_cb(const char *from, const char *to,
-                  const char *subj, int (body_cb)(void *));
+/*
+ * TODO Needed for smtp_send_status() that will send the logs
+ *
+ * void smtp_send_cb(const char *from, const char *to,
+ *                   const char *subj, int (body_cb)(void *));
+ */
 
 #endif

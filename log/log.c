@@ -66,8 +66,8 @@ ICACHE_FLASH_ATTR void log_entry(const char *level, const char *file, int line, 
                          days, hrs, mins, secs, ms, level, file, line, mesg);
     else
         rv = os_snprintf(logbuf.entry, sizeof(logbuf.entry),
-                        "%02u:%02u:%02u.%03u: %s: %s:%d: %s\n",
-                        hrs, mins, secs, ms, level, file, line, mesg);
+                         "%02u:%02u:%02u.%03u: %s: %s:%d: %s\n",
+                         hrs, mins, secs, ms, level, file, line, mesg);
 
     if ((size_t)rv >= sizeof(logbuf.entry))
         os_strncpy(logbuf.entry + (sizeof(logbuf.entry)-5), "...\n", 5);

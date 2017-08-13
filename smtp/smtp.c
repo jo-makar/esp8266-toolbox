@@ -6,8 +6,24 @@
 #include <osapi.h>
 
 SmtpServer smtp_server;
+static SmtpState smtp_state;
+
+static void smtp_send_dns(const char *host, ip_addr_t *ip, void *arg);
+static void smtp_send_connect(const ip_addr_t *ip);
+static void smtp_send_greet();
+
+static void smtp_send_conn_cb(void *arg);
+static void smtp_send_error_cb(void *arg, int8_t err);
+static void smtp_send_disconn_cb(void *arg);
+static void smtp_send_recv_cb(void *arg, char *data, unsigned short len);
+static void smtp_send_sent_cb(void *arg);
+
+static void smtp_send_kill(void *arg);
 
 ICACHE_FLASH_ATTR void smtp_init() {
+    os_bzero(&smtp_state, sizeof(smtp_state));
+    smtp_state.state = SMTP_STATE_READY;
+
     os_bzero(&smtp_server, sizeof(smtp_server));
     if (param_retrieve(PARAM_SMTP_OFFSET, (uint8_t *)&smtp_server, sizeof(smtp_server)))
         return;
@@ -17,10 +33,243 @@ ICACHE_FLASH_ATTR void smtp_init() {
 
 ICACHE_FLASH_ATTR void smtp_send(const char *from, const char *to,
                                  const char *subj, const char *body) {
-    /* FIXME STOPPED */
+    ip_addr_t ip;
+    err_t rv;
+
+    if (os_strlen(smtp_server.host) == 0) {
+        ERROR(SMTP, "no smtp account")
+        return;
+    }
+
+    if (smtp_state.state != SMTP_STATE_READY) {
+        ERROR(SMTP, "not in ready state")
+        return;
+    }
+
+    if (os_strlen(from)+1 > sizeof(smtp_state.from)) {
+        WARNING(SMTP, "from overflow")
+        return;
+    }
+    os_strncpy((char *)smtp_state.from, from, os_strlen(from));
+
+    if (os_strlen(to)+1 > sizeof(smtp_state.to)) {
+        WARNING(SMTP, "to overflow")
+        return;
+    }
+    os_strncpy((char *)smtp_state.to, from, os_strlen(to));
+
+    if (os_strlen(subj)+1 > sizeof(smtp_state.subj)) {
+        WARNING(SMTP, "subj overflow")
+        return;
+    }
+    os_strncpy((char *)smtp_state.body, body, os_strlen(body));
+
+    if (os_strlen(body)+1 > sizeof(smtp_state.body)) {
+        WARNING(SMTP, "body overflow")
+        return;
+    }
+    os_strncpy((char *)smtp_state.body, from, os_strlen(body));
+
+    /*
+     * Nothing (not even os_delay_us()) "releases" the process to run tasks,
+     * including internal system tasks such as handling DNS resolution responses.
+     * Or to put it differently no task/timer can preempt another task/timer.
+     *
+     * Hence this process is daisy-chained from a successful DNS resolution.
+     */
+
+    smtp_state.state = SMTP_STATE_RESOLVE;
+    rv = espconn_gethostbyname(&smtp_state.conn, smtp_server.host, &ip, smtp_send_dns);
+    if (rv == ESPCONN_OK) {
+        DEBUG(SMTP, "espconn_gethostbyname() => OK")
+        smtp_send_connect(&ip);
+    } else if (rv == ESPCONN_INPROGRESS) {
+        DEBUG(SMTP, "espconn_gethostbyname() => INPROGRESS")
+    } else {
+        ERROR(SMTP, "espconn_gethostbyname() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+    }
+
 }
 
-ICACHE_FLASH_ATTR void smtp_send_cb(const char *from, const char *to,
-                                    const char *subj, int (body_cb)(void *)) {
-    /* FIXME Needed for smtp_send_status() that will send the logs */
+ICACHE_FLASH_ATTR void smtp_send_dns(const char *host, ip_addr_t *ip, void *arg) {
+    (void)host;
+    (void)arg;
+
+    if (ip == NULL) {
+        ERROR(SMTP, "dns resolution failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+    } else {
+        INFO(SMTP, "dns host=" IPSTR, IP2STR(ip))
+        smtp_send_connect(ip);
+    }
+}
+
+ICACHE_FLASH_ATTR void smtp_send_connect(const ip_addr_t *ip) {
+    smtp_state.state = SMTP_STATE_CONNECT;
+
+    os_bzero(&smtp_state.tcp, sizeof(smtp_state.tcp));
+    smtp_state.tcp.remote_port = smtp_server.port;
+    smtp_state.tcp.remote_ip[3] = ip->addr >> 24;
+    smtp_state.tcp.remote_ip[2] = ip->addr >> 16;
+    smtp_state.tcp.remote_ip[1] = ip->addr >> 8;
+    smtp_state.tcp.remote_ip[0] = ip->addr;
+
+    os_bzero(&smtp_state.conn, sizeof(smtp_state.conn));
+    smtp_state.conn.type = ESPCONN_TCP;
+    smtp_state.conn.state = ESPCONN_NONE;
+    smtp_state.conn.proto.tcp = &smtp_state.tcp;
+
+    if (espconn_regist_connectcb(&smtp_state.conn, smtp_send_conn_cb)) {
+        ERROR(SMTP, "espconn_regist_connectcb() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+        return;
+    }
+
+    if (espconn_regist_reconcb(&smtp_state.conn, smtp_send_error_cb)) {
+        ERROR(SMTP, "espconn_regist_reconcb() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+        return;
+    }
+
+    if (espconn_connect(&smtp_state.conn)) {
+        ERROR(SMTP, "espconn_connect() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+        return;
+    }
+}
+
+ICACHE_FLASH_ATTR void smtp_send_conn_cb(void *arg) {
+    struct espconn *conn = arg;
+
+    DEBUG(SMTP, "connect: " IPSTR ":%u",
+                IP2STR(conn->proto.tcp->remote_ip),
+                conn->proto.tcp->remote_port)
+
+    if (espconn_regist_disconcb(conn, smtp_send_disconn_cb)) {
+        ERROR(SMTP, "espconn_regist_disconcb() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, conn);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    if (espconn_regist_recvcb(conn, smtp_send_recv_cb)) {
+        ERROR(SMTP, "espconn_regist_recvcb() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, conn);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    if (espconn_regist_sentcb(conn, smtp_send_sent_cb)) {
+        ERROR(SMTP, "espconn_regist_sentcb() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, conn);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    smtp_send_greet();
+}
+
+ICACHE_FLASH_ATTR void smtp_send_error_cb(void *arg, int8_t err) {
+    struct espconn *conn = arg;
+
+    switch (err) {
+        case ESPCONN_TIMEOUT:
+            ERROR(SMTP, "error: timeout " IPSTR ":%u",
+                        IP2STR(conn->proto.tcp->remote_ip),
+                        conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_ABRT:
+            ERROR(SMTP, "error: abrt " IPSTR ":%u",
+                        IP2STR(conn->proto.tcp->remote_ip),
+                        conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_RST:
+            ERROR(SMTP, "error: rst " IPSTR ":%u",
+                        IP2STR(conn->proto.tcp->remote_ip),
+                        conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_CLSD:
+            ERROR(SMTP, "error: clsd " IPSTR ":%u",
+                        IP2STR(conn->proto.tcp->remote_ip),
+                        conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_CONN:
+            ERROR(SMTP, "error: conn " IPSTR ":%u",
+                        IP2STR(conn->proto.tcp->remote_ip),
+                        conn->proto.tcp->remote_port)
+            break;
+        case ESPCONN_HANDSHAKE:
+            ERROR(SMTP, "error: handshake " IPSTR ":%u",
+                        IP2STR(conn->proto.tcp->remote_ip),
+                        conn->proto.tcp->remote_port)
+            break;
+        default:
+            ERROR(SMTP, "error: unknown (%02x) " IPSTR ":%u",
+                        err, IP2STR(conn->proto.tcp->remote_ip),
+                        conn->proto.tcp->remote_port)
+            break;
+    }
+}
+
+ICACHE_FLASH_ATTR void smtp_send_disconn_cb(void *arg) {
+    struct espconn *conn = arg;
+
+    DEBUG(SMTP, "disconnect: " IPSTR ":%u",
+                IP2STR(conn->proto.tcp->remote_ip),
+                conn->proto.tcp->remote_port)
+}
+
+ICACHE_FLASH_ATTR void smtp_send_recv_cb(void *arg, char *data, unsigned short len) {
+    struct espconn *conn = arg;
+
+    DEBUG(SMTP, "recv: " IPSTR ":%u len=%u",
+                IP2STR(conn->proto.tcp->remote_ip),
+                conn->proto.tcp->remote_port, len)
+
+    if (smtp_state.inbufused + len > sizeof(smtp_state.inbuf)) {
+        WARNING(SMTP, "recv: smtp inbuf overflow")
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    os_memcpy(smtp_state.inbuf + smtp_state.inbufused, data, len);
+    smtp_state.inbufused += len;
+}
+
+ICACHE_FLASH_ATTR void smtp_send_sent_cb(void *arg) {
+    struct espconn *conn = arg;
+
+    DEBUG(SMTP, "sent: " IPSTR ":%u",
+                IP2STR(conn->proto.tcp->remote_ip),
+                conn->proto.tcp->remote_port)
+}
+
+ICACHE_FLASH_ATTR void smtp_send_kill(void *arg) {
+    struct espconn *conn = arg;
+
+    if (espconn_disconnect(conn))
+        ERROR(SMTP, "kill: espconn_disconnect() failed")
+    if (espconn_delete(conn))
+        ERROR(SMTP, "kill: espconn_delete() failed")
+}
+
+ICACHE_FLASH_ATTR void smtp_send_greet() {
+    /* FIXME STOPPED */
 }
