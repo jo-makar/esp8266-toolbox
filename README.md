@@ -14,9 +14,10 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
   - [x] Push updates
   - [ ] Pull updates
 - [x] SMTP client framework
+  - [x] Flash param storage/retrieval
+  - [ ] Refactor to use a state-machine design
   - [ ] AUTH CRAM-MD5
   - [ ] SSL support (via BearSSL or similar)
-  - [ ] Refactor to use a state-machine design
 - [x] Logging framework
   - [ ] Use SNTP for timestamps if available
 - [ ] Environment monitoring
@@ -84,7 +85,7 @@ The big integer implementation only supports unsigned operations but it sufficie
 for RSA encryption and decryption.
 
 # SMTP client framework
-A simple SMTP client is available in smtp/.
+A simple SMTP client for sending mails and texts is available in smtp/.
 
 Currently only supporting non-SSL/TLS SMTP providers (eg SMTP2GO).
 
@@ -94,6 +95,9 @@ Currently only supporting non-SSL/TLS SMTP providers (eg SMTP2GO).
 The account information (host, port, etc) are stored in flash with other user
 params starting at three sectors before the second partition.  Reference the code
 in param/ for background on user param storage and retrieval.
+
+## Mail triggers
+- After connecting to the configured AP (ie system online)
 
 # Logging framework
 A logging framework akin to Linux's syslog(3) is available from log/log.h.
