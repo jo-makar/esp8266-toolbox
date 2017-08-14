@@ -14,6 +14,8 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
   - [x] Push updates
   - [ ] Pull updates
 - [ ] SMTP client framework
+  - [ ] AUTH CRAM-MD5
+  - [ ] SSL support (via BearSSL or similar)
 - [x] Logging framework
   - [ ] Use SNTP for timestamps if available
 - [ ] Environment monitoring
@@ -81,10 +83,11 @@ The big integer implementation only supports unsigned operations but it sufficie
 for RSA encryption and decryption.
 
 # SMTP client framework
-A simple SMTP SSL client is available in smtp/.
+A simple SMTP client is available in smtp/.
 
-It currently depends on the included third-party library
-[BearSSL](http://www.bearssl.org).  To rebuild BearSSL, run
+Currently only supporting non-SSL/TLS SMTP providers (eg SMTP2GO).
+
+[BearSSL](http://www.bearssl.org) support forthcoming, to rebuild run
 `(cd bearssl-0.5; make CONF=esp8266)`.
 
 The account information (host, port, etc) are stored in flash with other user
@@ -97,9 +100,11 @@ The default for all subsystem logging levels (eg MAIN_LOG_LEVEL) is LEVEL_INFO
 and can be changed at runtime with log_raise() or log_lower().
 
 An example use case from user_init.c:
+
 `INFO(MAIN, "Version %s built on %s", VERSION, BUILD_DATE)`
 
 Would produce the following log entry:
+
 `00:00:15.506: info: user_init.c:13: Version 1.0.0 built on Aug 10 2017 06:52:39`
 
 Which is comprised of system time (hours:minutes:seconds.milliseconds), log

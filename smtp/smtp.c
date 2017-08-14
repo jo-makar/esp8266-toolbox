@@ -11,6 +11,14 @@ static SmtpState smtp_state;
 static void smtp_send_dns(const char *host, ip_addr_t *ip, void *arg);
 static void smtp_send_connect(const ip_addr_t *ip);
 static void smtp_send_greet();
+static void smtp_send_login_user();
+static void smtp_send_login_pass();
+static void smtp_send_auth();
+static void smtp_send_from();
+static void smtp_send_to();
+static void smtp_send_data();
+static void smtp_send_quit();
+static void smtp_send_close();
 
 static void smtp_send_conn_cb(void *arg);
 static void smtp_send_error_cb(void *arg, int8_t err);
@@ -62,13 +70,13 @@ ICACHE_FLASH_ATTR void smtp_send(const char *from, const char *to,
         WARNING(SMTP, "subj overflow")
         return;
     }
-    os_strncpy((char *)smtp_state.body, body, os_strlen(body));
+    os_strncpy((char *)smtp_state.subj, subj, os_strlen(subj));
 
     if (os_strlen(body)+1 > sizeof(smtp_state.body)) {
         WARNING(SMTP, "body overflow")
         return;
     }
-    os_strncpy((char *)smtp_state.body, from, os_strlen(body));
+    os_strncpy((char *)smtp_state.body, body, os_strlen(body));
 
     /*
      * Nothing (not even os_delay_us()) "releases" the process to run tasks,
@@ -179,7 +187,19 @@ ICACHE_FLASH_ATTR void smtp_send_conn_cb(void *arg) {
         return;
     }
 
-    smtp_send_greet();
+    smtp_state.state = SMTP_STATE_GREET;
+
+    if (espconn_send(&smtp_state.conn, (uint8_t *)"ehlo [127.0.1.1]\r\n", 18)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+    DEBUG(SMTP, ">> ehlo [127.0.1.1]")
 }
 
 ICACHE_FLASH_ATTR void smtp_send_error_cb(void *arg, int8_t err) {
@@ -239,8 +259,9 @@ ICACHE_FLASH_ATTR void smtp_send_recv_cb(void *arg, char *data, unsigned short l
                 IP2STR(conn->proto.tcp->remote_ip),
                 conn->proto.tcp->remote_port, len)
 
-    if (smtp_state.inbufused + len > sizeof(smtp_state.inbuf)) {
+    if (smtp_state.inbufused + len >= sizeof(smtp_state.inbuf)) {
         WARNING(SMTP, "recv: smtp inbuf overflow")
+        smtp_state.state = SMTP_STATE_FAILED;
 
         os_timer_disarm(&smtp_state.timer);
         os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
@@ -251,6 +272,25 @@ ICACHE_FLASH_ATTR void smtp_send_recv_cb(void *arg, char *data, unsigned short l
 
     os_memcpy(smtp_state.inbuf + smtp_state.inbufused, data, len);
     smtp_state.inbufused += len;
+
+    if (smtp_state.state == SMTP_STATE_GREET)
+        smtp_send_greet();
+    else if (smtp_state.state == SMTP_STATE_LOGIN_USER)
+        smtp_send_login_user();
+    else if (smtp_state.state == SMTP_STATE_LOGIN_PASS)
+        smtp_send_login_pass();
+    else if (smtp_state.state == SMTP_STATE_AUTH)
+        smtp_send_auth();
+    else if (smtp_state.state == SMTP_STATE_FROM)
+        smtp_send_from();
+    else if (smtp_state.state == SMTP_STATE_TO)
+        smtp_send_to();
+    else if (smtp_state.state == SMTP_STATE_DATA)
+        smtp_send_data();
+    else if (smtp_state.state == SMTP_STATE_QUIT)
+        smtp_send_quit();
+    else if (smtp_state.state == SMTP_STATE_CLOSE)
+        smtp_send_close();
 }
 
 ICACHE_FLASH_ATTR void smtp_send_sent_cb(void *arg) {
@@ -271,5 +311,419 @@ ICACHE_FLASH_ATTR void smtp_send_kill(void *arg) {
 }
 
 ICACHE_FLASH_ATTR void smtp_send_greet() {
-    /* FIXME STOPPED */
+    uint8_t *end;
+    uint8_t good, done;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    while (1) {
+        if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+            return;
+
+        *end = 0;
+        DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+        *end = '\r';
+
+        good = 0;
+        if (os_strncmp("220", (char *)smtp_state.inbuf, 3) == 0)
+            good = 1;
+        else if (os_strncmp("250", (char *)smtp_state.inbuf, 3) == 0)
+            good = 1;
+
+        if (!good) {
+            ERROR(SMTP, "non 220/250 response")
+            smtp_state.state = SMTP_STATE_FAILED;
+
+            os_timer_disarm(&smtp_state.timer);
+            os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+            os_timer_arm(&smtp_state.timer, 3000, false);
+
+            return;
+        }
+
+        done = 0;
+        if (os_strncmp("250 ", (char *)smtp_state.inbuf, 4) == 0)
+            done = 1;
+
+        end += 2;
+        smtp_state.inbufused -= end-smtp_state.inbuf;
+        os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+        if (done)
+            break;
+    }
+
+    smtp_state.state = SMTP_STATE_LOGIN_USER;
+
+    if (espconn_send(&smtp_state.conn, (uint8_t *)"AUTH LOGIN\r\n", 12)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+    DEBUG(SMTP, ">> AUTH LOGIN")
+}
+
+ICACHE_FLASH_ATTR void smtp_send_login_user() {
+    uint8_t *end;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+        return;
+
+    *end = 0;
+    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+    *end = '\r';
+
+    if (os_strncmp("334 ", (char *)smtp_state.inbuf, 4) != 0) {
+        ERROR(SMTP, "non 334 response")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    end += 2;
+    smtp_state.inbufused -= end-smtp_state.inbuf;
+    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+    smtp_state.state = SMTP_STATE_LOGIN_PASS;
+
+    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf), "%s\r\n", smtp_server.user);
+
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, os_strlen(smtp_server.user) + 2)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+    DEBUG(SMTP, ">> %s", smtp_server.user)
+}
+
+ICACHE_FLASH_ATTR void smtp_send_login_pass() {
+    uint8_t *end;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+        return;
+
+    *end = 0;
+    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+    *end = '\r';
+
+    if (os_strncmp("334 ", (char *)smtp_state.inbuf, 4) != 0) {
+        ERROR(SMTP, "non 334 response")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    end += 2;
+    smtp_state.inbufused -= end-smtp_state.inbuf;
+    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+    smtp_state.state = SMTP_STATE_AUTH;
+
+    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf), "%s\r\n", smtp_server.pass);
+
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, os_strlen(smtp_server.pass) + 2)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+    DEBUG(SMTP, ">> %s", smtp_server.pass)
+}
+
+ICACHE_FLASH_ATTR void smtp_send_auth() {
+    uint8_t *end;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+        return;
+
+    *end = 0;
+    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+    *end = '\r';
+
+    if (os_strncmp("235 ", (char *)smtp_state.inbuf, 4) != 0) {
+        ERROR(SMTP, "non 235 response")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    end += 2;
+    smtp_state.inbufused -= end-smtp_state.inbuf;
+    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+    smtp_state.state = SMTP_STATE_FROM;
+
+    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf), "mail FROM:<%s>\r\n", smtp_state.from);
+
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, os_strlen((char *)smtp_state.from) + 14)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    smtp_state.outbuf[os_strlen((char *)smtp_state.from) + 12] = 0;
+    DEBUG(SMTP, ">> %s", smtp_state.outbuf)
+}
+
+ICACHE_FLASH_ATTR void smtp_send_from() {
+    uint8_t *end;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+        return;
+
+    *end = 0;
+    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+    *end = '\r';
+
+    if (os_strncmp("250 ", (char *)smtp_state.inbuf, 4) != 0) {
+        ERROR(SMTP, "non 250 response")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    end += 2;
+    smtp_state.inbufused -= end-smtp_state.inbuf;
+    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+    smtp_state.state = SMTP_STATE_TO;
+
+    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf), "rcpt TO:<%s>\r\n", smtp_state.to);
+
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, os_strlen((char *)smtp_state.to) + 12)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    smtp_state.outbuf[os_strlen((char *)smtp_state.to) + 10] = 0;
+    DEBUG(SMTP, ">> %s", smtp_state.outbuf)
+}
+
+ICACHE_FLASH_ATTR void smtp_send_to() {
+    uint8_t *end;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+        return;
+
+    *end = 0;
+    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+    *end = '\r';
+
+    if (os_strncmp("250 ", (char *)smtp_state.inbuf, 4) != 0) {
+        ERROR(SMTP, "non 250 response")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    end += 2;
+    smtp_state.inbufused -= end-smtp_state.inbuf;
+    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+    smtp_state.state = SMTP_STATE_DATA;
+
+    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf), "data\r\n");
+
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, 6)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    DEBUG(SMTP, ">> data")
+}
+
+ICACHE_FLASH_ATTR void smtp_send_data() {
+    uint8_t *end;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+        return;
+
+    *end = 0;
+    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+    *end = '\r';
+
+    if (os_strncmp("354 ", (char *)smtp_state.inbuf, 4) != 0) {
+        ERROR(SMTP, "non 354 response")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    end += 2;
+    smtp_state.inbufused -= end-smtp_state.inbuf;
+    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+    smtp_state.state = SMTP_STATE_QUIT;
+
+    /*
+     * Should check for a single dot on a line in the body,
+     * if found replace with two dots (called dot stuffing).
+     */
+
+
+    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf),
+                "From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s\r\n.\r\n",
+                smtp_state.from, smtp_state.to, smtp_state.subj, smtp_state.body);
+
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf,
+                      6 + os_strlen((char *)smtp_state.from) +
+                      6 + os_strlen((char *)smtp_state.to)   +
+                     11 + os_strlen((char *)smtp_state.subj) +
+                      4 + os_strlen((char *)smtp_state.body) + 5)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    DEBUG(SMTP, "from=%s", smtp_state.from)
+    DEBUG(SMTP, "  to=%s", smtp_state.to)
+    DEBUG(SMTP, "subj=%s", smtp_state.subj)
+    DEBUG(SMTP, "body=%s", smtp_state.body)
+}
+
+ICACHE_FLASH_ATTR void smtp_send_quit() {
+    uint8_t *end;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+        return;
+
+    *end = 0;
+    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+    *end = '\r';
+
+    if (os_strncmp("250 ", (char *)smtp_state.inbuf, 4) != 0) {
+        ERROR(SMTP, "non 250 response")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    end += 2;
+    smtp_state.inbufused -= end-smtp_state.inbuf;
+    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+    smtp_state.state = SMTP_STATE_CLOSE;
+
+    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf), "quit\r\n");
+
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, 6)) {
+        ERROR(SMTP, "espconn_send() failed")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    DEBUG(SMTP, ">> quit")
+}
+
+ICACHE_FLASH_ATTR void smtp_send_close() {
+    uint8_t *end;
+
+    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
+
+    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
+        return;
+
+    *end = 0;
+    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
+    *end = '\r';
+
+    if (os_strncmp("221 ", (char *)smtp_state.inbuf, 4) != 0) {
+        ERROR(SMTP, "non 221 response")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    end += 2;
+    smtp_state.inbufused -= end-smtp_state.inbuf;
+    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
+
+    smtp_state.state = SMTP_STATE_READY;
 }

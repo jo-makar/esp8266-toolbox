@@ -14,10 +14,19 @@ typedef struct {
 extern SmtpServer smtp_server;
 
 typedef struct {
-    #define SMTP_STATE_FAILED  -1
-    #define SMTP_STATE_READY    1
-    #define SMTP_STATE_RESOLVE  2
-    #define SMTP_STATE_CONNECT  3
+    #define SMTP_STATE_FAILED     -1
+    #define SMTP_STATE_READY       1
+    #define SMTP_STATE_RESOLVE     2
+    #define SMTP_STATE_CONNECT     3
+    #define SMTP_STATE_GREET       4
+    #define SMTP_STATE_LOGIN_USER  5
+    #define SMTP_STATE_LOGIN_PASS  6
+    #define SMTP_STATE_AUTH        7
+    #define SMTP_STATE_FROM        8
+    #define SMTP_STATE_TO          9
+    #define SMTP_STATE_DATA       10
+    #define SMTP_STATE_QUIT       11
+    #define SMTP_STATE_CLOSE      12
     int8_t state;
 
     /* Used for both DNS and TCP */
