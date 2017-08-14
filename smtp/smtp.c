@@ -648,10 +648,10 @@ ICACHE_FLASH_ATTR void smtp_send_data() {
         return;
     }
 
-    DEBUG(SMTP, "from=%s", smtp_state.from)
-    DEBUG(SMTP, "  to=%s", smtp_state.to)
-    DEBUG(SMTP, "subj=%s", smtp_state.subj)
-    DEBUG(SMTP, "body=%s", smtp_state.body)
+    INFO(SMTP, "from=%s", smtp_state.from)
+    INFO(SMTP, "  to=%s", smtp_state.to)
+    INFO(SMTP, "subj=%s", smtp_state.subj)
+    INFO(SMTP, "body=%s", smtp_state.body)
 }
 
 ICACHE_FLASH_ATTR void smtp_send_quit() {

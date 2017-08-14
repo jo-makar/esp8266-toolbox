@@ -98,6 +98,7 @@ in param/ for background on user param storage and retrieval.
 
 ## Mail triggers
 - After connecting to the configured AP (ie system online)
+- The uptime day count is incremented (ie once every 24 hours)
 
 # Logging framework
 A logging framework akin to Linux's syslog(3) is available from log/log.h.
