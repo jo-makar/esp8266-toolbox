@@ -1,3 +1,4 @@
+#include "../crypto/base64.h"
 #include "../log/log.h"
 #include "../smtp/private.h"
 #include "../param.h"
@@ -14,6 +15,7 @@ static void smtp_param_write(void *arg);
 ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
     size_t beg, end;
     char *key, *val, *next;
+    int rv;
 
     HTTP_IGNORE_POSTDATA
 
@@ -51,14 +53,36 @@ ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
                 ERROR(HTTP, "user overflow")
                 goto fail;
             }
-            os_strncpy(smtp_server.user, val, os_strlen(val)+1);
+
+            if ((rv = b64_encode((uint8_t *)val, os_strlen(val),
+                                 (uint8_t *)smtp_server.user, sizeof(smtp_server.user))) == -1)
+                goto fail;
+            smtp_server.user[rv] = 0;
         }
         else if (os_strncmp(key, "pass", 4) == 0) {
             if (os_strlen(val) >= sizeof(smtp_server.pass)) {
                 ERROR(HTTP, "pass overflow")
                 goto fail;
             }
-            os_strncpy(smtp_server.pass, val, os_strlen(val)+1);
+
+            if ((rv = b64_encode((uint8_t *)val, os_strlen(val),
+                                 (uint8_t *)smtp_server.pass, sizeof(smtp_server.pass))) == -1)
+                goto fail;
+            smtp_server.pass[rv] = 0;
+        }
+        if (os_strncmp(key, "from", 4) == 0) {
+            if (os_strlen(val) >= sizeof(smtp_server.from)) {
+                ERROR(HTTP, "from overflow")
+                goto fail;
+            }
+            os_strncpy(smtp_server.from, val, os_strlen(val)+1);
+        }
+        if (os_strncmp(key, "to", 2) == 0) {
+            if (os_strlen(val) >= sizeof(smtp_server.to)) {
+                ERROR(HTTP, "to overflow")
+                goto fail;
+            }
+            os_strncpy(smtp_server.to, val, os_strlen(val)+1);
         }
 
         if (next == NULL)
@@ -67,7 +91,8 @@ ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
     }
 
     if (os_strlen(smtp_server.host) == 0 || smtp_server.port == 0 ||
-        os_strlen(smtp_server.user) == 0 || os_strlen(smtp_server.pass) == 0)
+        os_strlen(smtp_server.user) == 0 || os_strlen(smtp_server.pass) == 0 ||
+        os_strlen(smtp_server.from) == 0 || os_strlen(smtp_server.to)   == 0)
         goto form;
 
     os_timer_disarm(&smtp_param_timer);
@@ -106,6 +131,16 @@ ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
     HTTP_OUTBUF_APPEND("</style></head><body>\n")
     HTTP_OUTBUF_APPEND("<form action=\"/smtp/setup\" method=\"get\">\n")
     HTTP_OUTBUF_APPEND("<table>\n")
+
+    HTTP_OUTBUF_APPEND("<tr>")
+    HTTP_OUTBUF_PRINTF("<td class=\"label\">Mail from (max %u bytes)</td>\n", sizeof(smtp_server.from))
+    HTTP_OUTBUF_APPEND("<td><input type=\"text\" name=\"from\"></td>\n")
+    HTTP_OUTBUF_APPEND("<td/></tr>\n")
+
+    HTTP_OUTBUF_APPEND("<tr>")
+    HTTP_OUTBUF_PRINTF("<td class=\"label\">Mail to (max %u bytes)</td>\n", sizeof(smtp_server.to))
+    HTTP_OUTBUF_APPEND("<td><input type=\"text\" name=\"to\"></td>\n")
+    HTTP_OUTBUF_APPEND("<td/></tr>\n")
 
     HTTP_OUTBUF_APPEND("<tr>")
     HTTP_OUTBUF_PRINTF("<td class=\"label\">Hostname (max %u bytes)</td>\n", sizeof(smtp_server.host))

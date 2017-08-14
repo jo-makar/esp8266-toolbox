@@ -37,6 +37,7 @@ ICACHE_FLASH_ATTR void smtp_init() {
         return;
 
     DEBUG(SMTP, "host:port=%s:%u user=%s", smtp_server.host, smtp_server.port, smtp_server.user)
+    DEBUG(SMTP, "from=%s to=%s", smtp_server.from, smtp_server.to)
 }
 
 ICACHE_FLASH_ATTR void smtp_send(const char *from, const char *to,
@@ -64,7 +65,7 @@ ICACHE_FLASH_ATTR void smtp_send(const char *from, const char *to,
         WARNING(SMTP, "to overflow")
         return;
     }
-    os_strncpy((char *)smtp_state.to, from, os_strlen(to));
+    os_strncpy((char *)smtp_state.to, to, os_strlen(to));
 
     if (os_strlen(subj)+1 > sizeof(smtp_state.subj)) {
         WARNING(SMTP, "subj overflow")

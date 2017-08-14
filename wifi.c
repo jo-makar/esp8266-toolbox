@@ -1,4 +1,5 @@
 #include "log/log.h"
+#include "smtp/smtp.h"
 #include "missing-decls.h"
 
 #include <ets_sys.h>
@@ -104,9 +105,13 @@ ICACHE_FLASH_ATTR static void wifi_evt_cb(System_Event_t *evt) {
 
         case EVENT_STAMODE_GOT_IP: {
             Event_StaMode_Got_IP_t *info = &evt->event_info.got_ip;
+            char subj[64];
 
             INFO(MAIN, "station: got_ip ip=" IPSTR " mask=" IPSTR " gw=" IPSTR,
                        IP2STR(&info->ip), IP2STR(&info->mask), IP2STR(&info->gw))
+
+            os_snprintf(subj, sizeof(subj), "esp8266-%08x online", system_get_chip_id());
+            smtp_send(smtp_server.from, smtp_server.to, subj, "");
 
             break;
         }

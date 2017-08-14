@@ -9,6 +9,9 @@ typedef struct {
     uint16_t port;
     char user[64];
     char pass[64];
+
+    char from[128];
+    char to[128];
 } SmtpServer;
 
 extern SmtpServer smtp_server;
