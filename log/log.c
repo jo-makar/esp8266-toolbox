@@ -1,4 +1,5 @@
 #include "../missing-decls.h"
+#include "../uptime.h"
 #include "log.h"
 
 #include <ets_sys.h>
@@ -51,7 +52,7 @@ ICACHE_FLASH_ATTR void log_entry(const char *level, const char *file, int line, 
     int rv;
     size_t len;
 
-    time_us   = system_get_time();
+    time_us   = uptime_us();
     time_secs = time_us / 1000000;
 
     days = time_secs / (60*60*24);
