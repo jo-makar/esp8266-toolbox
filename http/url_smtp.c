@@ -32,9 +32,9 @@ ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
         if (index(val, '&') != NULL) {
             next = index(val, '&') + 1;
             *(next - 1) = 0;
-            url_decode(next);
         } else
             next = NULL;
+        url_decode(val);
 
         DEBUG(HTTP, "key:%s val:%s", key, val)
 
