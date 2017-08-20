@@ -352,6 +352,9 @@ ICACHE_FLASH_ATTR void smtp_send_greet() {
 
         if (done)
             break;
+
+        if (smtp_state.inbufused == 0)
+            return;
     }
 
     smtp_state.state = SMTP_STATE_LOGIN_USER;
