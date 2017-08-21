@@ -59,25 +59,25 @@ ICACHE_FLASH_ATTR void smtp_send(const char *from, const char *to,
         WARNING(SMTP, "from overflow")
         return;
     }
-    os_strncpy((char *)smtp_state.from, from, os_strlen(from));
+    os_strncpy((char *)smtp_state.from, from, os_strlen(from)+1);
 
     if (os_strlen(to)+1 > sizeof(smtp_state.to)) {
         WARNING(SMTP, "to overflow")
         return;
     }
-    os_strncpy((char *)smtp_state.to, to, os_strlen(to));
+    os_strncpy((char *)smtp_state.to, to, os_strlen(to)+1);
 
     if (os_strlen(subj)+1 > sizeof(smtp_state.subj)) {
         WARNING(SMTP, "subj overflow")
         return;
     }
-    os_strncpy((char *)smtp_state.subj, subj, os_strlen(subj));
+    os_strncpy((char *)smtp_state.subj, subj, os_strlen(subj)+1);
 
     if (os_strlen(body)+1 > sizeof(smtp_state.body)) {
         WARNING(SMTP, "body overflow")
         return;
     }
-    os_strncpy((char *)smtp_state.body, body, os_strlen(body));
+    os_strncpy((char *)smtp_state.body, body, os_strlen(body)+1);
 
     /*
      * Nothing (not even os_delay_us()) "releases" the process to run tasks,
