@@ -10,13 +10,14 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 - [x] OTA updates
   - [x] SHA256 implementation
   - [x] RSA signed updates
-      - [x] Big integer implementation
+    - [x] Big integer implementation
   - [x] Push updates
   - [ ] Pull updates
 - [x] SMTP client framework
   - [x] Flash param storage/retrieval
   - [ ] Refactor to use a state-machine design
   - [ ] AUTH CRAM-MD5
+    - [x] MD5 implementation
   - [ ] SSL support (via BearSSL or similar)
 - [x] Logging framework
   - [ ] Use SNTP for timestamps if available

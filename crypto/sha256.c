@@ -4,7 +4,7 @@
 #include <sys/param.h>
 #include <osapi.h>
 
-ICACHE_RODATA_ATTR const uint32_t k[64] = {
+ICACHE_RODATA_ATTR const uint32_t sha256_k[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b,
     0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01,
     0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7,
@@ -19,8 +19,6 @@ ICACHE_RODATA_ATTR const uint32_t k[64] = {
     0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
-
-static uint32_t w[64];
 
 static uint32_t rrotate(uint32_t x, uint8_t n);
 
@@ -113,6 +111,7 @@ ICACHE_FLASH_ATTR static uint32_t rrotate(uint32_t x, uint8_t n) {
 ICACHE_FLASH_ATTR static void sha256_consume(Sha256State *state,
                                              const uint8_t *chunk) {
     int i;
+    uint32_t w[64];
     uint32_t s0, s1;
     uint32_t g[8];
     uint32_t S0, S1, ch;
@@ -136,7 +135,7 @@ ICACHE_FLASH_ATTR static void sha256_consume(Sha256State *state,
     for (i=0; i<64; i++) {
         S1 = rrotate(g[4], 6) ^ rrotate(g[4], 11) ^ rrotate(g[4], 25);
         ch = (g[4] & g[5]) ^ (~g[4] & g[6]);
-        temp1 = g[7] + S1 + ch + k[i] + w[i];
+        temp1 = g[7] + S1 + ch + sha256_k[i] + w[i];
         S0 = rrotate(g[0], 2) ^ rrotate(g[0], 13) ^ rrotate(g[0], 22);
         maj = (g[0] & g[1]) ^ (g[0] & g[2]) ^ (g[1] & g[2]);
         temp2 = S0 + maj;

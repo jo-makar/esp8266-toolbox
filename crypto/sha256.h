@@ -1,7 +1,7 @@
 #ifndef CRYPTO_SHA256_H
 #define CRYPTO_SHA256_H
 
-#include <stdint.h>
+#include <c_types.h>
 
 typedef struct {
     uint8_t buf[64], buflen;
