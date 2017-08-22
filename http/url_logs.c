@@ -139,8 +139,8 @@ ICACHE_FLASH_ATTR int http_url_logs(HttpClient *client) {
     HTTP_OUTBUF_APPEND("<table>\n")
 
     for (i=0; i<count-1; i++) {
-        if (http_outbuflen + 19 + (lines[i+1]-lines[i]) > HTTP_OUTBUF_MAXLEN-23) {
-            INFO(HTTP, "avoided http_outbuf overflow")
+        if (http_outbuflen + 19 + (lines[i+1]-lines[i]) >= HTTP_OUTBUF_MAXLEN-24) {
+            DEBUG(HTTP, "avoided http_outbuf overflow")
             break;
         }
 

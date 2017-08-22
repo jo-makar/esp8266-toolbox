@@ -22,8 +22,7 @@ typedef struct {
     #define SMTP_STATE_RESOLVE     2
     #define SMTP_STATE_CONNECT     3
     #define SMTP_STATE_GREET       4
-    #define SMTP_STATE_LOGIN_USER  5
-    #define SMTP_STATE_LOGIN_PASS  6
+    #define SMTP_STATE_CHALLENGE   5
     #define SMTP_STATE_AUTH        7
     #define SMTP_STATE_FROM        8
     #define SMTP_STATE_TO          9

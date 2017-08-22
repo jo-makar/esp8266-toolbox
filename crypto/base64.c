@@ -6,7 +6,8 @@
 static uint8_t decmap(uint8_t c);
 static uint8_t encmap(uint8_t c);
 
-ICACHE_FLASH_ATTR int b64decode(const uint8_t *enc, size_t elen, uint8_t *dec, size_t dlen) {
+ICACHE_FLASH_ATTR int b64_decode(const uint8_t *enc, size_t elen,
+                                       uint8_t *dec, size_t dlen) {
     size_t i, j;
     uint8_t last;
     uint32_t v;
@@ -62,10 +63,11 @@ ICACHE_FLASH_ATTR int b64decode(const uint8_t *enc, size_t elen, uint8_t *dec, s
         }
   }
 
-  return 0;
+  return j;
 }
 
-ICACHE_FLASH_ATTR int b64_encode(const uint8_t *dec, size_t dlen, uint8_t *enc, size_t elen) {
+ICACHE_FLASH_ATTR int b64_encode(const uint8_t *dec, size_t dlen,
+                                       uint8_t *enc, size_t elen) {
     size_t i, j;
     uint32_t v;
 

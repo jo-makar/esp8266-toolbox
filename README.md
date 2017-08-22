@@ -7,7 +7,7 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
     - Intended to simplify the framework interface (ie hide the SDK callbacks)
     - Add support for multiple sends per HTTP response (eg http_url_logs())
     - Data is to be pushed/pulled with an underlying task handling the callbacks
-- [x] OTA updates
+- [x] Over-The-Air updates
   - [x] SHA256 implementation
   - [x] RSA signed updates
     - [x] Big integer implementation
@@ -16,8 +16,7 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 - [x] SMTP client framework
   - [x] Flash param storage/retrieval
   - [ ] Refactor to use a state-machine design
-  - [ ] AUTH CRAM-MD5
-    - [x] MD5 implementation
+  - [x] AUTH CRAM-MD5
   - [ ] SSL support (via BearSSL or similar)
 - [x] Logging framework
   - [ ] Use SNTP for timestamps if available

@@ -1,3 +1,5 @@
+#include "../crypto/base64.h"
+#include "../crypto/md5.h"
 #include "../log/log.h"
 #include "../missing-decls.h"
 #include "../param.h"
@@ -11,8 +13,7 @@ static SmtpState smtp_state;
 static void smtp_send_dns(const char *host, ip_addr_t *ip, void *arg);
 static void smtp_send_connect(const ip_addr_t *ip);
 static void smtp_send_greet();
-static void smtp_send_login_user();
-static void smtp_send_login_pass();
+static void smtp_send_challenge();
 static void smtp_send_auth();
 static void smtp_send_from();
 static void smtp_send_to();
@@ -276,10 +277,8 @@ ICACHE_FLASH_ATTR void smtp_send_recv_cb(void *arg, char *data, unsigned short l
 
     if (smtp_state.state == SMTP_STATE_GREET)
         smtp_send_greet();
-    else if (smtp_state.state == SMTP_STATE_LOGIN_USER)
-        smtp_send_login_user();
-    else if (smtp_state.state == SMTP_STATE_LOGIN_PASS)
-        smtp_send_login_pass();
+    else if (smtp_state.state == SMTP_STATE_CHALLENGE)
+        smtp_send_challenge();
     else if (smtp_state.state == SMTP_STATE_AUTH)
         smtp_send_auth();
     else if (smtp_state.state == SMTP_STATE_FROM)
@@ -357,9 +356,9 @@ ICACHE_FLASH_ATTR void smtp_send_greet() {
             return;
     }
 
-    smtp_state.state = SMTP_STATE_LOGIN_USER;
+    smtp_state.state = SMTP_STATE_CHALLENGE;
 
-    if (espconn_send(&smtp_state.conn, (uint8_t *)"AUTH LOGIN\r\n", 12)) {
+    if (espconn_send(&smtp_state.conn, (uint8_t *)"AUTH CRAM-MD5\r\n", 15)) {
         ERROR(SMTP, "espconn_send() failed")
         smtp_state.state = SMTP_STATE_FAILED;
 
@@ -369,11 +368,26 @@ ICACHE_FLASH_ATTR void smtp_send_greet() {
 
         return;
     }
-    DEBUG(SMTP, ">> AUTH LOGIN")
+    DEBUG(SMTP, ">> AUTH CRAM-MD5")
 }
 
-ICACHE_FLASH_ATTR void smtp_send_login_user() {
+ICACHE_FLASH_ATTR void smtp_send_challenge() {
+    #define MD5_BLOCKSIZE 64
+
+    char pass[MD5_BLOCKSIZE];
+    uint8_t chal[128];
+    uint8_t tmp[256], tmp2[256];
+    size_t len;
+    int16_t len2;
     uint8_t *end;
+    size_t i;
+
+    if ((len = os_strlen(smtp_server.pass)) > MD5_BLOCKSIZE) {
+        md5((uint8_t *)smtp_server.pass, len, (uint8_t *)pass);
+    } else {
+        os_bzero(pass, sizeof(pass));
+        os_memcpy(pass, smtp_server.pass, len);
+    }
 
     smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
 
@@ -395,16 +409,8 @@ ICACHE_FLASH_ATTR void smtp_send_login_user() {
         return;
     }
 
-    end += 2;
-    smtp_state.inbufused -= end-smtp_state.inbuf;
-    os_memmove(smtp_state.inbuf, end, smtp_state.inbufused+1);
-
-    smtp_state.state = SMTP_STATE_LOGIN_PASS;
-
-    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf), "%s\r\n", smtp_server.user);
-
-    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, os_strlen(smtp_server.user) + 2)) {
-        ERROR(SMTP, "espconn_send() failed")
+    len = end - (smtp_state.inbuf+4);
+    if ((len2 = b64_decode(smtp_state.inbuf+4, len, chal, sizeof(chal))) < 0) {
         smtp_state.state = SMTP_STATE_FAILED;
 
         os_timer_disarm(&smtp_state.timer);
@@ -413,31 +419,8 @@ ICACHE_FLASH_ATTR void smtp_send_login_user() {
 
         return;
     }
-    DEBUG(SMTP, ">> %s", smtp_server.user)
-}
-
-ICACHE_FLASH_ATTR void smtp_send_login_pass() {
-    uint8_t *end;
-
-    smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
-
-    if ((end = (uint8_t *)os_strstr((char *)smtp_state.inbuf, "\r\n")) == NULL)
-        return;
-
-    *end = 0;
-    DEBUG(SMTP, "<< %s", smtp_state.inbuf)
-    *end = '\r';
-
-    if (os_strncmp("334 ", (char *)smtp_state.inbuf, 4) != 0) {
-        ERROR(SMTP, "non 334 response")
-        smtp_state.state = SMTP_STATE_FAILED;
-
-        os_timer_disarm(&smtp_state.timer);
-        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
-        os_timer_arm(&smtp_state.timer, 3000, false);
-
-        return;
-    }
+    chal[len2] = 0;
+    DEBUG(SMTP, "chal = %s", chal)
 
     end += 2;
     smtp_state.inbufused -= end-smtp_state.inbuf;
@@ -445,9 +428,66 @@ ICACHE_FLASH_ATTR void smtp_send_login_pass() {
 
     smtp_state.state = SMTP_STATE_AUTH;
 
-    os_snprintf((char *)smtp_state.outbuf, sizeof(smtp_state.outbuf), "%s\r\n", smtp_server.pass);
+    os_memcpy(tmp, pass, MD5_BLOCKSIZE);
+    for (i=0; i<MD5_BLOCKSIZE; i++)
+        tmp[i] ^= 0x36;
 
-    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, os_strlen(smtp_server.pass) + 2)) {
+    if (MD5_BLOCKSIZE + os_strlen((char *)chal) > sizeof(tmp)) {
+        ERROR(SMTP, "tmp overflow")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+    os_memcpy(tmp + MD5_BLOCKSIZE, chal, os_strlen((char *)chal));
+    md5(tmp, MD5_BLOCKSIZE + os_strlen((char *)chal), tmp);
+
+    os_memmove(tmp + MD5_BLOCKSIZE, tmp, MD5_BLOCKSIZE);
+    os_memcpy(tmp, pass, MD5_BLOCKSIZE);
+    for (i=0; i<MD5_BLOCKSIZE; i++)
+        tmp[i] ^= 0x5c;
+
+    md5(tmp, 2*MD5_BLOCKSIZE, tmp);
+    DEBUG(SMTP, "resp = %02x%02x%02x%02x%02x%02x%02x%02x"
+                       "%02x%02x%02x%02x%02x%02x%02x%02x",
+                tmp[0],tmp[1],tmp[2], tmp[3], tmp[4], tmp[5], tmp[6], tmp[7],
+                tmp[8],tmp[9],tmp[10],tmp[11],tmp[12],tmp[13],tmp[14],tmp[15])
+
+    
+    if (os_strlen(smtp_server.user) + 33 > sizeof(tmp2)) {
+        ERROR(SMTP, "tmp2 overflow")
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+    os_snprintf((char *)tmp2, sizeof(tmp2),
+                "%s %02x%02x%02x%02x%02x%02x%02x%02x"
+                   "%02x%02x%02x%02x%02x%02x%02x%02x",
+                smtp_server.user,
+                tmp[0],tmp[1],tmp[2], tmp[3], tmp[4], tmp[5], tmp[6], tmp[7],
+                tmp[8],tmp[9],tmp[10],tmp[11],tmp[12],tmp[13],tmp[14],tmp[15]);
+
+    if ((len2 = b64_encode(tmp2, os_strlen(smtp_server.user) + 33,
+                           smtp_state.outbuf, sizeof(smtp_state.outbuf))) < 0) {
+        smtp_state.state = SMTP_STATE_FAILED;
+
+        os_timer_disarm(&smtp_state.timer);
+        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+        os_timer_arm(&smtp_state.timer, 3000, false);
+
+        return;
+    }
+
+    os_memcpy(smtp_state.outbuf+len, "\r\n", 2);
+
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, len+2)) {
         ERROR(SMTP, "espconn_send() failed")
         smtp_state.state = SMTP_STATE_FAILED;
 
@@ -457,7 +497,9 @@ ICACHE_FLASH_ATTR void smtp_send_login_pass() {
 
         return;
     }
-    DEBUG(SMTP, ">> %s", smtp_server.pass)
+
+    smtp_state.outbuf[len] = 0;
+    DEBUG(SMTP, ">> %s", smtp_state.outbuf)
 }
 
 ICACHE_FLASH_ATTR void smtp_send_auth() {
