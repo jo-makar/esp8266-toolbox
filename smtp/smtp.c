@@ -373,21 +373,13 @@ ICACHE_FLASH_ATTR void smtp_send_greet() {
 
 ICACHE_FLASH_ATTR void smtp_send_challenge() {
     #define MD5_BLOCKSIZE 64
+    #define MD5_HASHLEN 16
 
-    char pass[MD5_BLOCKSIZE];
     uint8_t chal[128];
-    uint8_t tmp[256], tmp2[256];
-    size_t len;
-    int16_t len2;
+    uint8_t resp[MD5_HASHLEN];
     uint8_t *end;
-    size_t i;
-
-    if ((len = os_strlen(smtp_server.pass)) > MD5_BLOCKSIZE) {
-        md5((uint8_t *)smtp_server.pass, len, (uint8_t *)pass);
-    } else {
-        os_bzero(pass, sizeof(pass));
-        os_memcpy(pass, smtp_server.pass, len);
-    }
+    size_t len;
+    int len2;
 
     smtp_state.inbuf[os_strlen((char *)smtp_state.inbuf)] = 0;
 
@@ -428,66 +420,104 @@ ICACHE_FLASH_ATTR void smtp_send_challenge() {
 
     smtp_state.state = SMTP_STATE_AUTH;
 
-    os_memcpy(tmp, pass, MD5_BLOCKSIZE);
-    for (i=0; i<MD5_BLOCKSIZE; i++)
-        tmp[i] ^= 0x36;
+    {
+        uint8_t key[MD5_BLOCKSIZE];
+        uint8_t left[MD5_BLOCKSIZE];
+        uint8_t right[256];
+        size_t i;
 
-    if (MD5_BLOCKSIZE + os_strlen((char *)chal) > sizeof(tmp)) {
-        ERROR(SMTP, "tmp overflow")
-        smtp_state.state = SMTP_STATE_FAILED;
+        os_bzero(key, sizeof(key));
+        if ((len = os_strlen(smtp_server.pass)) > MD5_BLOCKSIZE)
+            md5((uint8_t *)smtp_server.pass, len, key);
+        else
+            os_memcpy(key, smtp_server.pass, len);
 
-        os_timer_disarm(&smtp_state.timer);
-        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
-        os_timer_arm(&smtp_state.timer, 3000, false);
+        /* Ref: https://en.wikipedia.org/wiki/Hash-based_message_authentication_code#Definition */
 
-        return;
-    }
-    os_memcpy(tmp + MD5_BLOCKSIZE, chal, os_strlen((char *)chal));
-    md5(tmp, MD5_BLOCKSIZE + os_strlen((char *)chal), tmp);
+        os_memcpy(left, key, MD5_BLOCKSIZE);
+        for (i=0; i<MD5_BLOCKSIZE; i++)
+            left[i] ^= 0x5c;
 
-    os_memmove(tmp + MD5_BLOCKSIZE, tmp, MD5_BLOCKSIZE);
-    os_memcpy(tmp, pass, MD5_BLOCKSIZE);
-    for (i=0; i<MD5_BLOCKSIZE; i++)
-        tmp[i] ^= 0x5c;
+        DEBUG(SMTP, "left = %02x%02x%02x%02x%02x%02x%02x%02x"
+                           "%02x%02x%02x%02x%02x%02x%02x%02x",
+              left[0],left[1],left[2], left[3], left[4], left[5], left[6], left[7],
+              left[8],left[9],left[10],left[11],left[12],left[13],left[14],left[15])
 
-    md5(tmp, 2*MD5_BLOCKSIZE, tmp);
-    DEBUG(SMTP, "resp = %02x%02x%02x%02x%02x%02x%02x%02x"
+        len = os_strlen((char *)chal);
+        if (MD5_BLOCKSIZE + len > sizeof(right)) {
+            ERROR(SMTP, "right overflow")
+            smtp_state.state = SMTP_STATE_FAILED;
+
+            os_timer_disarm(&smtp_state.timer);
+            os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+            os_timer_arm(&smtp_state.timer, 3000, false);
+
+            return;
+        }
+
+        os_memcpy(right, key, MD5_BLOCKSIZE);
+        for (i=0; i<MD5_BLOCKSIZE; i++)
+            right[i] ^= 0x36;
+        os_memcpy(right+MD5_BLOCKSIZE, chal, len);
+
+        DEBUG(SMTP, "right = %02x%02x%02x%02x%02x%02x%02x%02x"
+                            "%02x%02x%02x%02x%02x%02x%02x%02x%s",
+              right[0],right[1],right[2], right[3], right[4], right[5], right[6], right[7],
+              right[8],right[9],right[10],right[11],right[12],right[13],right[14],right[15],
+              right+16)
+
+        /* Reusing right as a tmp buffer */
+
+        md5(right, MD5_BLOCKSIZE + len, right+MD5_BLOCKSIZE);
+        DEBUG(SMTP, "md5(right) = %02x%02x%02x%02x%02x%02x%02x%02x"
+                                 "%02x%02x%02x%02x%02x%02x%02x%02x",
+              right[64+0],right[64+1],right[64+2], right[64+3], right[64+4], right[64+5], right[64+6], right[64+7],
+              right[64+8],right[64+9],right[64+10],right[64+11],right[64+12],right[64+13],right[64+14],right[64+15])
+
+        os_memcpy(right, left, MD5_BLOCKSIZE);
+        md5(right, MD5_BLOCKSIZE + MD5_HASHLEN, resp);
+
+        DEBUG(SMTP, "resp = %02x%02x%02x%02x%02x%02x%02x%02x"
+                           "%02x%02x%02x%02x%02x%02x%02x%02x",
+              resp[0],resp[1],resp[2], resp[3], resp[4], resp[5], resp[6], resp[7],
+              resp[8],resp[9],resp[10],resp[11],resp[12],resp[13],resp[14],resp[15])
+
+        len = os_strlen(smtp_server.user) + 33;
+        if (len > sizeof(right)) {
+            ERROR(SMTP, "right overflow")
+            smtp_state.state = SMTP_STATE_FAILED;
+
+            os_timer_disarm(&smtp_state.timer);
+            os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+            os_timer_arm(&smtp_state.timer, 3000, false);
+
+            return;
+        }
+        os_snprintf((char *)right, sizeof(right),
+                    "%s %02x%02x%02x%02x%02x%02x%02x%02x"
                        "%02x%02x%02x%02x%02x%02x%02x%02x",
-                tmp[0],tmp[1],tmp[2], tmp[3], tmp[4], tmp[5], tmp[6], tmp[7],
-                tmp[8],tmp[9],tmp[10],tmp[11],tmp[12],tmp[13],tmp[14],tmp[15])
+                    smtp_server.user,
+                    resp[0],resp[1],resp[2], resp[3], resp[4], resp[5], resp[6], resp[7],
+                    resp[8],resp[9],resp[10],resp[11],resp[12],resp[13],resp[14],resp[15]);
 
+        DEBUG(SMTP, "%s", right)
+
+        if ((len2 = b64_encode(right, len, smtp_state.outbuf,
+                               sizeof(smtp_state.outbuf))) < 0) {
+            smtp_state.state = SMTP_STATE_FAILED;
+
+            os_timer_disarm(&smtp_state.timer);
+            os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
+            os_timer_arm(&smtp_state.timer, 3000, false);
+
+            return;
+        }
+
+        os_memcpy(smtp_state.outbuf+len2, "\r\n", 2);
+        len2 += 2;
+    }
     
-    if (os_strlen(smtp_server.user) + 33 > sizeof(tmp2)) {
-        ERROR(SMTP, "tmp2 overflow")
-        smtp_state.state = SMTP_STATE_FAILED;
-
-        os_timer_disarm(&smtp_state.timer);
-        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
-        os_timer_arm(&smtp_state.timer, 3000, false);
-
-        return;
-    }
-    os_snprintf((char *)tmp2, sizeof(tmp2),
-                "%s %02x%02x%02x%02x%02x%02x%02x%02x"
-                   "%02x%02x%02x%02x%02x%02x%02x%02x",
-                smtp_server.user,
-                tmp[0],tmp[1],tmp[2], tmp[3], tmp[4], tmp[5], tmp[6], tmp[7],
-                tmp[8],tmp[9],tmp[10],tmp[11],tmp[12],tmp[13],tmp[14],tmp[15]);
-
-    if ((len2 = b64_encode(tmp2, os_strlen(smtp_server.user) + 33,
-                           smtp_state.outbuf, sizeof(smtp_state.outbuf))) < 0) {
-        smtp_state.state = SMTP_STATE_FAILED;
-
-        os_timer_disarm(&smtp_state.timer);
-        os_timer_setfn(&smtp_state.timer, smtp_send_kill, NULL);
-        os_timer_arm(&smtp_state.timer, 3000, false);
-
-        return;
-    }
-
-    os_memcpy(smtp_state.outbuf+len, "\r\n", 2);
-
-    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, len+2)) {
+    if (espconn_send(&smtp_state.conn, smtp_state.outbuf, len2)) {
         ERROR(SMTP, "espconn_send() failed")
         smtp_state.state = SMTP_STATE_FAILED;
 
@@ -498,7 +528,7 @@ ICACHE_FLASH_ATTR void smtp_send_challenge() {
         return;
     }
 
-    smtp_state.outbuf[len] = 0;
+    smtp_state.outbuf[len2-2] = 0;
     DEBUG(SMTP, ">> %s", smtp_state.outbuf)
 }
 

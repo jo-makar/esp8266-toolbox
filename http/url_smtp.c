@@ -1,4 +1,3 @@
-#include "../crypto/base64.h"
 #include "../log/log.h"
 #include "../smtp/private.h"
 #include "../param.h"
@@ -15,7 +14,6 @@ static void smtp_param_write(void *arg);
 ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
     size_t beg, end;
     char *key, *val, *next;
-    int rv;
 
     HTTP_IGNORE_POSTDATA
 
@@ -43,7 +41,7 @@ ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
                 ERROR(HTTP, "host overflow")
                 goto fail;
             }
-            os_strncpy(smtp_server.host, val, os_strlen(val)+1);
+            os_memcpy(smtp_server.host, val, os_strlen(val)+1);
         }
         else if (os_strncmp(key, "port", 4) == 0) {
             smtp_server.port = atoi(val);
@@ -53,36 +51,28 @@ ICACHE_FLASH_ATTR int http_url_smtp_setup(HttpClient *client) {
                 ERROR(HTTP, "user overflow")
                 goto fail;
             }
-
-            if ((rv = b64_encode((uint8_t *)val, os_strlen(val),
-                                 (uint8_t *)smtp_server.user, sizeof(smtp_server.user))) == -1)
-                goto fail;
-            smtp_server.user[rv] = 0;
+            os_memcpy(smtp_server.user, val, os_strlen(val)+1);
         }
         else if (os_strncmp(key, "pass", 4) == 0) {
             if (os_strlen(val) >= sizeof(smtp_server.pass)) {
                 ERROR(HTTP, "pass overflow")
                 goto fail;
             }
-
-            if ((rv = b64_encode((uint8_t *)val, os_strlen(val),
-                                 (uint8_t *)smtp_server.pass, sizeof(smtp_server.pass))) == -1)
-                goto fail;
-            smtp_server.pass[rv] = 0;
+            os_memcpy(smtp_server.pass, val, os_strlen(val)+1);
         }
         if (os_strncmp(key, "from", 4) == 0) {
             if (os_strlen(val) >= sizeof(smtp_server.from)) {
                 ERROR(HTTP, "from overflow")
                 goto fail;
             }
-            os_strncpy(smtp_server.from, val, os_strlen(val)+1);
+            os_memcpy(smtp_server.from, val, os_strlen(val)+1);
         }
         if (os_strncmp(key, "to", 2) == 0) {
             if (os_strlen(val) >= sizeof(smtp_server.to)) {
                 ERROR(HTTP, "to overflow")
                 goto fail;
             }
-            os_strncpy(smtp_server.to, val, os_strlen(val)+1);
+            os_memcpy(smtp_server.to, val, os_strlen(val)+1);
         }
 
         if (next == NULL)

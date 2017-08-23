@@ -15,8 +15,8 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
   - [ ] Pull updates
 - [x] SMTP client framework
   - [x] Flash param storage/retrieval
+  - [x] CRAM-MD5 authentication
   - [ ] Refactor to use a state-machine design
-  - [x] AUTH CRAM-MD5
   - [ ] SSL support (via BearSSL or similar)
 - [x] Logging framework
   - [ ] Use SNTP for timestamps if available
@@ -27,6 +27,7 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 - [ ] Battery circuit monitoring
 - [ ] Sleep modes for power conservation
 - [ ] Self-diagnosis and healing
+  - [ ] Monitor heap usage and stack pointer
 - [ ] MQTT client framework
 - [ ] Production board design
 

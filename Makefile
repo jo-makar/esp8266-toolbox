@@ -106,6 +106,7 @@ app2.elf: $(OBJ)
 	@$(CC) $(CFLAGS) -MD -MF $(@:.o=.d) -c -o $@ $<
 
 -include $(DEP)
+-include setup.mk
 
 clean:
 	@rm -f app?.bin app?.bin.sig eagle.app.*.bin app?.elf $(OBJ) $(DEP)
