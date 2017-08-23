@@ -7,6 +7,7 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
     - Intended to simplify the framework interface (ie hide the SDK callbacks)
     - Add support for multiple sends per HTTP response (eg http_url_logs())
     - Data is to be pushed/pulled with an underlying task handling the callbacks
+      - The data exchanges are to be asynchronous and non-blocking
 - [x] Over-The-Air updates
   - [x] SHA256 implementation
   - [x] RSA signed updates
