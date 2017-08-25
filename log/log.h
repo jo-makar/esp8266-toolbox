@@ -8,6 +8,7 @@
 #include <osapi.h>
 
 extern uint8_t CRYPTO_LOG_LEVEL;
+extern uint8_t DRIVER_LOG_LEVEL;
 extern uint8_t HTTP_LOG_LEVEL;
 extern uint8_t MAIN_LOG_LEVEL;
 extern uint8_t OTA_LOG_LEVEL;

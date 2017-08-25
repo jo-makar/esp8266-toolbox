@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = $(wildcard *.c crypto/*.c http/*.c log/*.c smtp/*.c)
+SRC = $(wildcard *.c crypto/*.c drivers/*.c http/*.c i2c/*.c log/*.c smtp/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 

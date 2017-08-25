@@ -22,7 +22,9 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 - [x] Logging framework
   - [ ] Use SNTP for timestamps if available
 - [ ] Environment monitoring
-  - [ ] Ambient light
+  - [x] Ambient light
+    - [x] TLS2561 light sensing
+      - [ ] Add support for interrupt based on significant change
   - [ ] Motion, vibration
   - [ ] Temperature, humidity
 - [ ] Battery circuit monitoring

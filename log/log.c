@@ -7,6 +7,7 @@
 #include <user_interface.h>
 
 uint8_t CRYPTO_LOG_LEVEL = LEVEL_INFO;
+uint8_t DRIVER_LOG_LEVEL = LEVEL_INFO;
 uint8_t HTTP_LOG_LEVEL   = LEVEL_INFO;
 uint8_t MAIN_LOG_LEVEL   = LEVEL_INFO;
 uint8_t OTA_LOG_LEVEL    = LEVEL_INFO;

@@ -174,6 +174,8 @@ ICACHE_FLASH_ATTR int http_url_logs_lower(HttpClient *client) {
 
     if (os_strstr((char *)client->url, "?crypto") != NULL)
         log_lower(&CRYPTO_LOG_LEVEL);
+    else if (os_strstr((char *)client->url, "?driver") != NULL)
+        log_lower(&DRIVER_LOG_LEVEL);
     else if (os_strstr((char *)client->url, "?http") != NULL)
         log_lower(&HTTP_LOG_LEVEL);
     else if (os_strstr((char *)client->url, "?main") != NULL)
@@ -214,6 +216,8 @@ ICACHE_FLASH_ATTR int http_url_logs_raise(HttpClient *client) {
 
     if (os_strstr((char *)client->url, "?crypto") != NULL)
         log_raise(&CRYPTO_LOG_LEVEL);
+    else if (os_strstr((char *)client->url, "?driver") != NULL)
+        log_raise(&DRIVER_LOG_LEVEL);
     else if (os_strstr((char *)client->url, "?http") != NULL)
         log_raise(&HTTP_LOG_LEVEL);
     else if (os_strstr((char *)client->url, "?main") != NULL)
