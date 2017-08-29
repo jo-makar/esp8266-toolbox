@@ -27,12 +27,12 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
       - [ ] Add support for interrupt based on significant change
   - [ ] Motion, vibration
   - [ ] Temperature, humidity
+- [x] Custom board design
 - [ ] Battery circuit monitoring
 - [ ] Sleep modes for power conservation
 - [ ] Self-diagnosis and healing
   - [ ] Monitor heap usage and stack pointer
 - [ ] MQTT client framework
-- [x] Custom board design
 
 # Quick start
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
