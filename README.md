@@ -142,9 +142,9 @@ Supported device drivers are provided in drivers/.
 A custom board was designed to simplify development, the schematic and gerbers
 are in board/.  The schematic is shown below.
 
-[x](https://github.com/jo-makar/esp8266-toolbox/blob/master/board/board.pdf)
+![x](https://github.com/jo-makar/esp8266-toolbox/blob/master/board/board.pdf)
 
-[x](/board/board.pdf)
+![x](/board/board.pdf)
 
 # License
 This software is freely available for non-commerical use, commerical use requires
