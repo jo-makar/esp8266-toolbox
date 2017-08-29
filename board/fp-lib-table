@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name LD1117V33)(type Legacy)(uri "$(KIPRJMOD)/parts/LD1117V33.mod")(options "")(descr ""))
+  (lib (name B3F-1000)(type Legacy)(uri "$(KIPRJMOD)/parts/B3F-1000.mod")(options "")(descr ""))
+)

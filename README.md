@@ -32,7 +32,7 @@ Motley of servers, clients and drivers for the ESP8266 with signed OTA updates
 - [ ] Self-diagnosis and healing
   - [ ] Monitor heap usage and stack pointer
 - [ ] MQTT client framework
-- [ ] Production board design
+- [x] Custom board design
 
 # Quick start
 - Install the toolchain and SDK: https://github.com/pfalcon/esp-open-sdk
@@ -125,8 +125,24 @@ stored in a buffer for use elsewhere, eg served by web page or sent by mail.
 
 Run `make log` to execute a host application that will read the output produced
 from UART0 including the generated log entries.  The Linux application
-log/uart0/uart0 is provided to support USB-UART bridges that can use non-standard
-baudrates only via ioctl() calls, eg the CP2104.
+log/uart0/uart0 is provided to support USB-UART bridges that can use
+non-standard baudrates only via ioctl() calls, eg the CP2104.
+
+# Environment monitoring
+
+The targeted ESP8266-01 has all of its pins used during the startup process but
+four (RX, TX, GPIO0 and GPIO2) can be later multiplexed, e.g. say for
+(bitbanged) I2C or SPI.
+
+Sensors can be attached to implement environment monitoring using those buses.
+Supported device drivers are provided in drivers/.
+
+# Custom board design
+
+A custom board was designed to simplify development, the schematic and gerbers
+are in board/.  The schematic is shown below.
+
+[][(board/board.pdf)
 
 # License
 This software is freely available for non-commerical use, commerical use requires
