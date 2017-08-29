@@ -142,7 +142,7 @@ Supported device drivers are provided in drivers/.
 A custom board was designed to simplify development, the schematic and gerbers
 are in board/.  The schematic is shown below.
 
-[][(board/board.pdf)
+![board/board.pdf][(board/board.pdf)
 
 # License
 This software is freely available for non-commerical use, commerical use requires
