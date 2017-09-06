@@ -30,8 +30,6 @@ ICACHE_FLASH_ATTR void log_entry(const char *level, const char *file, int line,
     uint8_t hrs, mins, secs;
     uint16_t ms;
 
-    int rv;
-
     total_us   = uptime_us();
     total_secs = total_us / 1000000;
 
@@ -42,16 +40,9 @@ ICACHE_FLASH_ATTR void log_entry(const char *level, const char *file, int line,
     ms   = (total_us % 1000000) / 1000;
 
     if (days > 0)
-        rv = os_snprintf(log_line, sizeof(log_line),
-                         "%ud %02u:%02u:%02u.%03u: %s: %s:%d: %s\n",
-                         days, hrs, mins, secs, ms, level, file, line, msg);
+        os_printf("%ud %02u:%02u:%02u.%03u: %s: %s:%d: %s\n",
+                  days, hrs, mins, secs, ms, level, file, line, msg);
     else
-        rv = os_snprintf(log_line, sizeof(log_line),
-                         "%02u:%02u:%02u.%03u: %s: %s:%d: %s\n",
-                         hrs, mins, secs, ms, level, file, line, msg);
-
-    if ((size_t)rv >= sizeof(log_line))
-        os_strncpy(log_line + (sizeof(log_line)-5), "...\n", 5);
-
-    os_printf("%s", log_line);
+        os_printf("%02u:%02u:%02u.%03u: %s: %s:%d: %s\n",
+                  hrs, mins, secs, ms, level, file, line, msg);
 }
