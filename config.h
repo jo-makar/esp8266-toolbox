@@ -11,4 +11,7 @@
 
 #define BUILD_DATETIME __DATE__ " " __TIME__
 
+#define WIFI_SSID "xxx"
+#define WIFI_PASS "xxx"
+
 #endif
