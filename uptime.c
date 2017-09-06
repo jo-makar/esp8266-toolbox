@@ -1,37 +1,48 @@
-#include "log/log.h"
-#include "smtp/smtp.h"
+#include "missing-decls.h"
 #include "uptime.h"
 
 #include <osapi.h>
 
-os_timer_t uptime_timer;
+struct {
+    int init;
+    uint32_t high;
+    uint32_t last;
+    os_timer_t timer;
+} uptime_state;
 
-static uint32_t uptime_high = 0;
-static uint32_t uptime_last = 0;
+void uptime_handler(void *arg);
+
+ICACHE_FLASH_ATTR void uptime_init() {
+    uptime_state.high = 0;
+    uptime_state.last = 0;
+
+    os_timer_disarm(&uptime_state.timer);
+    os_timer_setfn(&uptime_state.timer, uptime_handler, NULL);
+    os_timer_arm(&uptime_state.timer, 1000*60*20, true);
+
+    uptime_state.init = 1;
+}
+
+ICACHE_FLASH_ATTR uint64_t uptime_us() {
+    if (uptime_state.init == 0)
+        uptime_init();
+
+    /*
+     * Use uptime_state.last here rather than system_get_time()
+     * so that the system_get_time() overflow is handled cleanly.
+     */
+    uptime_handler(NULL);
+    return ((uint64_t)uptime_state.high<<32) | uptime_state.last;
+}
 
 ICACHE_FLASH_ATTR void uptime_handler(void *arg) {
     (void)arg;
 
     uint32_t t;
-    uint32_t days1, days2;
-    char subj[64];
 
-    DEBUG(MAIN, "uptime_handler")
+    if ((t = system_get_time()) < uptime_state.last)
+        uptime_state.high++;
 
-    days1 = (uptime_us() / 1000000) / (60*60*24);
-
-    if ((t=system_get_time()) < uptime_last)
-        uptime_high++;
-
-    uptime_last = t;
-
-    days2 = (uptime_us() / 1000000) / (60*60*24);
-    if (days2 > days1) {
-        os_snprintf(subj, sizeof(subj), "esp8266-%08x day %u", system_get_chip_id(), days2);
-        smtp_send(smtp_server.from, smtp_server.to, subj, "");
-    }
+    uptime_state.last = t;
 }
 
-ICACHE_FLASH_ATTR uint64_t uptime_us() {
-    return ((uint64_t)uptime_high<<32) | system_get_time();
-}

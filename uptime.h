@@ -1,9 +1,12 @@
 #ifndef UPTIME_H
 #define UPTIME_H
 
-uint64_t uptime_us();
+#include <stdint.h>
 
-extern os_timer_t uptime_timer;
-void uptime_handler(void *arg);
+/*
+ * The SDK function system_get_time() overflows about every 71 mins.
+ * The 64-bit return value here has an overflow of >500k years.
+ */
+uint64_t uptime_us();
 
 #endif
