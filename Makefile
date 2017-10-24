@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = $(wildcard *.c)
+SRC = $(wildcard *.c smtp/*.c)
 OBJ = $(SRC:.c=.o)
 DEP = $(SRC:.c=.d)
 

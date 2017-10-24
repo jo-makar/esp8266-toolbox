@@ -12,6 +12,12 @@
 #define BUILD_DATETIME __DATE__ " " __TIME__
 
 #define WIFI_SSID "xxx"
-#define WIFI_PASS "xxx"
+#define WIFI_PASS "yyy"
+
+#define SMTP_HOST "xxx"
+#define SMTP_PORT 25
+#define SMTP_USER "yyyy"
+#define SMTP_PASS "zzzz"
+#define SMTP_FROM "aaaa"
 
 #endif

@@ -8,12 +8,12 @@ Motley of servers, clients and drivers for the ESP8266
 - [ ] Over-The-Air updates
   - [ ] RSA signed firmware 
   - [ ] Push updates using HTTP/S server
-  - [ ] Pull updates using HTTP/S client
+  - [ ] Pull updates using HTTP/S client (or by holding GPIO0 low x seconds?)
 - [ ] SMTP client framework
   - [ ] PLAIN, CRAM-MD5 authentication
   - [ ] SSL support (via BearSSL or similar)
 - [x] Logging framework inspired by syslog
-  - [ ] Store entries in a circular buffer (to be sent by smtp/http)
+  - [ ] Store entries in a circular buffer (to be sent by SMTP/HTTP)
   - [ ] Use SNTP for timestamps if available
 - [ ] Environment monitoring
   - [ ] Ambient light
@@ -40,6 +40,15 @@ Motley of servers, clients and drivers for the ESP8266
 # Hardware
 This software was intended for use with the common eight-pin ESP-12, though it
 will work with any ESP8266 module with only minor modifications.
+
+# SMTP client framework
+A simple SMTP client for sending mails and texts is available in smtp/.
+
+Currently only supporting non-SSL/TLS SMTP providers (eg SMTP2GO).
+
+Internally designed using a clean state-machine (ie asynchronously push/pull
+data) to conceal the callbacks used by the SDK and simplify porting to other
+systems.
 
 # Logging framework
 A logging framework akin to Linux's syslog(3) is available via log.h.
