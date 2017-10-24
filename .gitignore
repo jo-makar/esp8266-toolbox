@@ -5,3 +5,5 @@ app?.elf
 *.d
 
 uart0/uart0
+
+*.swp
