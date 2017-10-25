@@ -10,7 +10,7 @@
 #endif
 
 ICACHE_FLASH_ATTR void user_init() {
-    log_info("main", "Version %s built on %s", VERSION, BUILD_DATETIME);
+    log_info("main", "version %s built on %s", VERSION, BUILD_DATETIME);
 
     wifi_init();
 }

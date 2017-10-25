@@ -50,16 +50,81 @@ Internally designed using a clean state-machine (ie asynchronously push/pull
 data) to conceal the callbacks used by the SDK and simplify porting to other
 systems.
 
+However the user interface is purposefully made simple (ie just `launch()` and
+`status()`) because the SDK has no mechanism to "release" the processor to run
+other tasks/timers, or to put it differently the scheduler only triggers when
+nothing else is executing.  Compare this to a typical RTOS where a `delay()` or
+`sleep()` function generally triggers rescheduling.
+
+The following shows the user code compared to a simplified view of what happens
+internally.
+
+```c
+smtp_send_launch("world@internet", "Hello world", NULL);
+/* ... */
+
+/* If needed and later after the function calling launch() has returned */
+if ((state = smtp_send_status()) == STMP_SEND_ERROR)
+    /* Handle error */
+else if (state == SMTP_SEND_RESOLVE)
+    /* Still resolving SMTP server host */
+/* ... */
+```
+
+```c
+struct {
+    int8_t state;
+    /* ... */
+    os_timer_t timer;
+} smtp_state;
+
+ICACHE_FLASH_ATTR void smtp_send_launch(const char *to, const char *subj,
+                                        const char *body) {
+    /* Validate input and buffer input */
+
+    smtp_state.state = SMTP_STATE_START;
+    smtp_handler(NULL);
+}
+
+ICACHE_FLASH_ATTR smtp_handler(void *arg) {
+    if (smtp_state.state == SMTP_STATE_ERROR) {
+        /* Handle error */
+        return;
+    }
+
+    else if (smtp_state.state == SMTP_STATE_START) {
+        /* Start process */
+        smtp_state.state = SMTP_STATE_RESOLVE;
+    }
+
+    else if (smtp_state.state == SMTP_STATE_RESOLVE) {
+        /* Launch SMTP server hostname resolution */
+    }
+
+    else if (smtp_state.state == SMTP_STATE_CONNECT) {
+        /* Connect to the SMTP server */
+    }
+
+    /* ... */
+
+    /* Schedule an execution of itself in three seconds */
+    os_timer_disarm(&smtp_state.timer);
+    os_timer_setfn(&smtp_state.timer, smtp_handler, NULL);
+    os_timer_arm(&smtp_state.timer, 1000*3, false);
+}
+
+```
+
 # Logging framework
 A logging framework akin to Linux's syslog(3) is available via log.h.
 
 An example use case from user_init.c:
 
-`log_info("main", "Version %s built on %s", VERSION, BUILD_DATETIME);`
+`log_info("main", "version %s built on %s", VERSION, BUILD_DATETIME);`
 
 Will produce a log entry similar to the following:
 
-`00:00:15.506: info: user_init.c:13: Version 1.0.0 built on Aug 10 2017 06:52:39`
+`00:00:15.506: info: user_init.c:13: version 1.0.0 built on Aug 10 2017 06:52:39`
 
 Which is comprised of the system time (hours:minutes:seconds.milliseconds), log
 level, file path and line number and finally entry proper.
@@ -74,6 +139,10 @@ via ioctl() calls, eg the CP2104.
 # Custom board design
 A simple, two-layer breakout board was designed to simplify development, the
 schematic and gerbers are located in board/.
+
+The headers provided are intended to support attaching external boards for
+sensors or actuators which are to be interfaced by multiplexing the available
+pins (eg TX, RX, GPIO0 and GPIO2).
 
 # License
 This software is freely available for non-commerical use, commerical use requires
