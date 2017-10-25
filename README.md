@@ -59,6 +59,8 @@ nothing else is executing.  Compare this to a typical RTOS where a `delay()` or
 The following shows the user code compared to a simplified view of what happens
 internally.
 
+<div>
+  <div style="float: left">
 ```c
 smtp_send_launch("world@internet", "Hello world", NULL);
 /* ... */
@@ -70,7 +72,8 @@ else if (state == SMTP_SEND_RESOLVE)
     /* Still resolving SMTP server host */
 /* ... */
 ```
-
+  </div>
+  <div>
 ```c
 struct {
     int8_t state;
@@ -80,7 +83,7 @@ struct {
 
 ICACHE_FLASH_ATTR void smtp_send_launch(const char *to, const char *subj,
                                         const char *body) {
-    /* Validate input and buffer input */
+    /* Validate and buffer input */
 
     smtp_state.state = SMTP_STATE_START;
     smtp_handler(NULL);
@@ -112,8 +115,9 @@ ICACHE_FLASH_ATTR smtp_handler(void *arg) {
     os_timer_setfn(&smtp_state.timer, smtp_handler, NULL);
     os_timer_arm(&smtp_state.timer, 1000*3, false);
 }
-
 ```
+  </div>
+</div>
 
 # Logging framework
 A logging framework akin to Linux's syslog(3) is available via log.h.
