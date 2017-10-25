@@ -86,7 +86,7 @@ ICACHE_FLASH_ATTR void smtp_send_launch(const char *to, const char *subj,
     smtp_handler(NULL);
 }
 
-ICACHE_FLASH_ATTR smtp_handler(void *arg) {
+ICACHE_FLASH_ATTR void smtp_handler(void *arg) {
     if (smtp_state.state == SMTP_STATE_ERROR) {
         /* Handle error */
         return;
