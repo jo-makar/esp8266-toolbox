@@ -10,7 +10,7 @@ void ets_delay_us(uint16);
 void ets_isr_mask(unsigned);
 void ets_isr_unmask(unsigned);
 
-void *ets_memcmp(const void *, const void *, size_t n);
+void *ets_memcmp(const void *, const void *, size_t);
 void *ets_memcpy(void *, const void *, size_t);
 void *ets_memmove(void *, const void *, size_t);
 
@@ -22,7 +22,8 @@ size_t ets_strlen(const char *);
 int ets_strcmp(const char *, const char *);
 int ets_strncmp(const char *, const char *, size_t);
 
-char *ets_strncpy(char *, const char *, size_t n);
+char *ets_strcpy(char *, const char *);
+char *ets_strncpy(char *, const char *, size_t);
 
 char *ets_strstr(const char *, const char *);
 
