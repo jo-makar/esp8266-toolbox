@@ -60,7 +60,7 @@ The following shows the user code compared to a simplified view of what happens
 internally.
 
 <div>
-  <div style="float: left">
+  <div style="align: left">
 ```c
 smtp_send_launch("world@internet", "Hello world", NULL);
 /* ... */
