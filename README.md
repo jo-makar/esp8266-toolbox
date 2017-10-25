@@ -64,9 +64,9 @@ smtp_send_launch("world@internet", "Hello world", NULL);
 /* ... */
 
 /* If needed and later after the function calling launch() has returned */
-if ((state = smtp_send_status()) == STMP_SEND_ERROR)
+if ((state = smtp_send_status()) == STMP_STATE_ERROR)
     /* Handle error */
-else if (state == SMTP_SEND_RESOLVE)
+else if (state == SMTP_STATE_RESOLVE)
     /* Still resolving SMTP server host */
 /* ... */
 ```
