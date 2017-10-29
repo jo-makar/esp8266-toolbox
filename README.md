@@ -82,7 +82,7 @@ ICACHE_FLASH_ATTR void smtp_send_launch(const char *to, const char *subj,
                                         const char *body) {
     /* Validate and buffer input */
 
-    smtp_state.state = SMTP_STATE_START;
+    smtp_state.state = SMTP_STATE_READY;
     smtp_handler(NULL);
 }
 
@@ -92,7 +92,7 @@ ICACHE_FLASH_ATTR void smtp_handler(void *arg) {
         return;
     }
 
-    else if (smtp_state.state == SMTP_STATE_START) {
+    else if (smtp_state.state == SMTP_STATE_READY) {
         /* Start process */
         smtp_state.state = SMTP_STATE_RESOLVE;
     }
