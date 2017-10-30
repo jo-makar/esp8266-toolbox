@@ -7,7 +7,7 @@ typedef struct {
 } LogLevel;
 
 const LogLevel log_levels[] = { {"main", LOG_LEVEL_INFO},
-                                {"smtp", LOG_LEVEL_DEBUG},
+                                {"smtp", LOG_LEVEL_INFO},
                               };
 
 char log_line[LOG_LINE_LEN];
