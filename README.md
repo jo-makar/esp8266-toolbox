@@ -9,8 +9,8 @@ Motley of servers, clients and drivers for the ESP8266
   - [ ] RSA signed firmware 
   - [ ] Push updates using HTTP/S server
   - [ ] Pull updates using HTTP/S client (or by holding GPIO0 low x seconds?)
-- [ ] SMTP client framework
-  - [ ] PLAIN, CRAM-MD5 authentication
+- [x] SMTP client framework
+  - [x] CRAM-MD5 authentication
   - [ ] SSL support (via BearSSL or similar)
 - [x] Logging framework inspired by syslog
   - [ ] Store entries in a circular buffer (to be sent by SMTP/HTTP)
